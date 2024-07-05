@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="e-learn@ep-noisy-glitter-a10k35ht.ap-southeast-1.aws.neon.tech" uuid="ae8899b3-3c28-4b29-90ca-e3e44039db04">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://ep-noisy-glitter-a10k35ht.ap-southeast-1.aws.neon.tech:5432/e-learn?sslmode=require</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+  </component>
+</project>
