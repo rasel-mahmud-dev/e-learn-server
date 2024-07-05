@@ -43,46 +43,44 @@ const categories = [
             }
         ]
       },
-      {
-        title: "Business",
-      },
-      {
-        title: "Finance & Accounting",
-      },
-      {
-        title: "IT & Software",
-      },
-      {
-        title: "Office Productivity",
-      },
-      {
-        title: "Personal Development",
-      },
-      {
-        title: "Design",
-      },
-      {
-        title: "Marketing",
-      },
-      {
-        title: "Lifestyle",
-      },
-      {
-        title: "Photography & Video",
-      },
-      {
-        title: "Health & Fitness",
-      },
-      {
-        title: "Music",
-      },
-      {
-        title: "Teaching & Academics",
-      },
-    ],
+    ]
+    },
+  {
+    title: "Business",
   },
-    
-
+  {
+    title: "Finance & Accounting",
+  },
+  {
+    title: "IT & Software",
+  },
+  {
+    title: "Office Productivity",
+  },
+  {
+    title: "Personal Development",
+  },
+  {
+    title: "Design",
+  },
+  {
+    title: "Marketing",
+  },
+  {
+    title: "Lifestyle",
+  },
+  {
+    title: "Photography & Video",
+  },
+  {
+    title: "Health & Fitness",
+  },
+  {
+    title: "Music",
+  },
+  {
+    title: "Teaching & Academics",
+  },
 ];
 
 ```

@@ -2,7 +2,6 @@ package database
 
 import (
 	"e-learn/internal/config"
-	"e-learn/internal/models"
 	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -22,6 +21,7 @@ func SeedDb() {
 	//DB.AutoMigrate(&models.User{})
 	//DB.AutoMigrate(&models.Review{})
 	//DB.AutoMigrate(&models.Course{})
-	DB.AutoMigrate(&models.Category{})
-	DB.AutoMigrate(&models.SubCategory{})
+	//DB.AutoMigrate(&models.Category{})
+	//DB.AutoMigrate(&models.SubCategory{})
+	//DB.AutoMigrate(&models.Topics{})
 }
