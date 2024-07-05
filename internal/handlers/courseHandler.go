@@ -3,31 +3,25 @@ package handlers
 import (
 	"e-learn/internal/database"
 	"e-learn/internal/models"
+	"e-learn/internal/response"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"time"
 )
 
 func GetCourses(c *gin.Context) {
 
-	var users []models.User
+	var users []models.Course
 	result := database.DB.Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
 		return
 	}
 
-	var response []models.User
+	var response []models.Course
 	for _, user := range users {
-		response = append(response, models.User{
-			ID:               user.ID,
-			FirstName:        user.FirstName,
-			LastName:         user.LastName,
-			Username:         user.Username,
-			Email:            user.Email,
-			PasswordHash:     "", // Omitting passwordHash field
-			RegistrationDate: user.RegistrationDate,
-			LastLogin:        user.LastLogin,
+		response = append(response, models.Course{
+			ID:        user.ID,
+			Thumbnail: "",
 		})
 	}
 
@@ -36,23 +30,35 @@ func GetCourses(c *gin.Context) {
 }
 
 func CreateCourse(c *gin.Context) {
-	var newUser models.Course
+	var data models.Course
 
 	// Bind JSON or form data
-	if err := c.ShouldBindJSON(&newUser); err != nil {
+	if err := c.ShouldBindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	newUser.CreatedAt = time.Now()
-	newUser.UpdatedAt = time.Now()
+	newCourse := models.Course{
+		Thumbnail: data.Thumbnail,
+		//Title:       data.Title,
+		//Slug:        utils.Slugify(data.Title),
+		//Description: data.Description,
+		//AuthorID:    data.AuthorID,
+		//PublishDate: time.Now(),
+		//CreatedAt:   time.Now(),
+		//UpdatedAt:   time.Now(),
+		//Price:       data.Price,
+		//Categories:  [],
+	}
 
-	result := database.DB.Create(&newUser)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+	// Batch insert topics
+	if err := database.DB.Create(&newCourse).Error; err != nil {
+
+		response.ErrorResponse(c, err, map[string]string{
+			"unique": "Item already exist.",
+		})
 		return
 	}
 
-	// Return success response
-	c.JSON(http.StatusCreated, newUser)
+	c.JSON(http.StatusCreated, newCourse)
 }

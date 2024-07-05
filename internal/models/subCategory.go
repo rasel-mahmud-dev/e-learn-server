@@ -10,6 +10,6 @@ type SubCategory struct {
 	Slug       string `json:"slug" gorm:"unique;not null"`
 }
 
-func (Course) TableName() string {
+func (SubCategory) TableName() string {
 	return "sub_categories"
 }

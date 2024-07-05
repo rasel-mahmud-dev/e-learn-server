@@ -18,6 +18,7 @@ func InitDB() {
 }
 
 func SeedDb() {
+	//DB.AutoMigrate(&models.Course{})
 	//DB.AutoMigrate(&models.User{})
 	//DB.AutoMigrate(&models.Review{})
 	//DB.AutoMigrate(&models.Course{})
