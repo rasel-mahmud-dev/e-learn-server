@@ -22,6 +22,12 @@ func SetupRouter() *gin.Engine {
 	r.POST("/sub-categories", handlers.CreateSubCategories)
 	r.GET("/sub-categories", handlers.GetSubCategories)
 
+	r.POST("/categories", handlers.CreateCategories)
+	r.GET("/categories", handlers.GetCategories)
+
+	r.POST("/topics", handlers.CreateTopics)
+	r.GET("/topics", handlers.GetTopics)
+
 	//r.GET("/users/:id", handlers.GetUserByID)
 	//r.PUT("/users/:id", handlers.UpdateUser)
 	//r.DELETE("/users/:id", handlers.DeleteUser)
