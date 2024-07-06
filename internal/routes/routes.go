@@ -2,6 +2,7 @@ package routes
 
 import (
 	"e-learn/internal/handlers"
+	"e-learn/internal/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -47,7 +48,7 @@ func SetupRouter() *gin.Engine {
 	r.GET("/course/detail/:slug", handlers.GetCourseDetail)
 
 	r.POST("/api/v1/auth/login", handlers.Login)
-	r.GET("/api/v1/auth/verify", handlers.VerifyUser)
+	r.GET("/api/v1/auth/verify", middleware.AuthenticateMiddleware, handlers.VerifyUser)
 
 	//r.GET("/users/:id", handlers.GetUserByID)
 	//r.PUT("/users/:id", handlers.UpdateUser)
