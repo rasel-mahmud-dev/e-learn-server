@@ -21,8 +21,7 @@ func GetUsers(c *gin.Context) {
 	for _, user := range users {
 		response = append(response, models.User{
 			ID:               user.ID,
-			FirstName:        user.FirstName,
-			LastName:         user.LastName,
+			FullName:         user.FullName,
 			Username:         user.Username,
 			Email:            user.Email,
 			PasswordHash:     "", // Omitting passwordHash field

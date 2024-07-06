@@ -41,7 +41,13 @@ func SetupRouter() *gin.Engine {
 	r.GET("/topics", handlers.GetTopics)
 
 	r.POST("/course", handlers.CreateCourse)
+	r.POST("/course/batch", handlers.CreateCourseBatch)
 	r.GET("/course", handlers.GetCourses)
+
+	r.GET("/course/detail/:slug", handlers.GetCourseDetail)
+
+	r.POST("/api/v1/auth/login", handlers.Login)
+	r.GET("/api/v1/auth/verify", handlers.VerifyUser)
 
 	//r.GET("/users/:id", handlers.GetUserByID)
 	//r.PUT("/users/:id", handlers.UpdateUser)
