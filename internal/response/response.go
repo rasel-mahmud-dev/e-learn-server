@@ -19,6 +19,6 @@ func ErrorResponse(c *gin.Context, err error, errorTextMapping map[string]string
 	}
 
 	c.JSON(http.StatusBadRequest, gin.H{
-		"errorMessage": msg,
+		"error": msg,
 	})
 }

@@ -16,7 +16,7 @@ func SetupRouter() *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
@@ -31,6 +31,8 @@ func SetupRouter() *gin.Engine {
 
 	r.GET("/users", handlers.GetUsers)
 	r.POST("/users", handlers.CreateUser)
+
+	r.PATCH("/users/update-profile", middleware.AuthenticateMiddleware, handlers.UpdateProfile)
 
 	r.POST("/sub-categories", handlers.CreateSubCategories)
 	r.GET("/sub-categories", handlers.GetSubCategories)
@@ -47,12 +49,7 @@ func SetupRouter() *gin.Engine {
 
 	r.GET("/course/detail/:slug", handlers.GetCourseDetail)
 
-	r.POST("/api/v1/auth/login", handlers.Login)
-	r.GET("/api/v1/auth/verify", middleware.AuthenticateMiddleware, handlers.VerifyUser)
-
-	//r.GET("/users/:id", handlers.GetUserByID)
-	//r.PUT("/users/:id", handlers.UpdateUser)
-	//r.DELETE("/users/:id", handlers.DeleteUser)
+	AuthRoute(r)
 
 	return r
 }

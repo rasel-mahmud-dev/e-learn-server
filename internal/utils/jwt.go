@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
@@ -52,7 +51,6 @@ func VerifyToken(tokenString string) bool {
 		return false
 	}
 
-	ParseToken(tokenString)
 	return true
 
 }
@@ -68,7 +66,6 @@ func ParseToken(tokenString string) *JwtPayload {
 	}
 
 	if claims, ok := token.Claims.(*MyCustomClaims); ok {
-		fmt.Println(claims)
 		return &claims.Data
 	}
 

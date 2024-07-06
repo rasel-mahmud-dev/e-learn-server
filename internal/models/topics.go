@@ -1,10 +1,15 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+	"time"
+)
 
 type Topics struct {
-	gorm.Model
-	ID    uint   `json:"id" gorm:"primaryKey"`
-	Title string `json:"title" gorm:"unique;not null"`
-	Slug  string `json:"slug" gorm:"unique;not null"`
+	ID        uint           ` json:"id" gorm:"primaryKey"`
+	DeletedAt gorm.DeletedAt `json:"deletedAt" gorm:"index"`
+	CreatedAt time.Time      ` json:"createdAt,omitempty" json:"CreatedAt" gorm:"not null"`
+	UpdatedAt time.Time      ` json:"updatedAt,omitempty" json:"UpdatedAt" gorm:"not null"`
+	Title     string         `json:"title" gorm:"unique;not null"`
+	Slug      string         `json:"slug" gorm:"unique;not null"`
 }
