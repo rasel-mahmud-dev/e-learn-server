@@ -13,6 +13,7 @@ type User struct {
 	UpdatedAt time.Time      ` json:"updatedAt,omitempty" json:"UpdatedAt" gorm:"not null"`
 
 	FullName         string     `json:"fullName,omitempty" gorm:"not null"`
+	Avatar           string     `json:"avatar,omitempty" gorm:""`
 	Username         string     `json:"username,omitempty" gorm:"unique;not null"`
 	Email            string     `json:"email,omitempty" gorm:"unique;not null"`
 	PasswordHash     string     `json:"password,omitempty" gorm:"not null"`

@@ -31,8 +31,10 @@ func SetupRouter() *gin.Engine {
 
 	r.GET("/users", handlers.GetUsers)
 	r.POST("/users", handlers.CreateUser)
+	r.GET("/users/profile/:profileId", handlers.GetUsersProfile)
 
 	r.PATCH("/users/update-profile", middleware.AuthenticateMiddleware, handlers.UpdateProfile)
+	r.PATCH("/users/update-profile-photo", middleware.AuthenticateMiddleware, handlers.UpdateProfilePhoto)
 
 	r.POST("/sub-categories", handlers.CreateSubCategories)
 	r.GET("/sub-categories", handlers.GetSubCategories)

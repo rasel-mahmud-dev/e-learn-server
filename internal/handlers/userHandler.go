@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"e-learn/internal/database"
+	"e-learn/internal/fileUpload"
 	"e-learn/internal/models"
 	"e-learn/internal/response"
 	"e-learn/internal/utils"
@@ -35,6 +36,25 @@ func GetUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+
+}
+
+func GetUsersProfile(c *gin.Context) {
+
+	profileId := c.Param("profileId")
+
+	var profile models.Profile
+
+	result := database.DB.Table("profiles").Where("user_id = ?", profileId).First(&profile)
+
+	if result.Error != nil {
+		response.ErrorResponse(c, result.Error, nil)
+		return
+	}
+
+	profile.User = nil
+
+	c.JSON(http.StatusOK, profile)
 
 }
 
@@ -99,4 +119,45 @@ func UpdateProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, payload)
+}
+
+func UpdateProfilePhoto(c *gin.Context) {
+
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorization"), nil)
+		return
+	}
+
+	// Parse multipart form
+	err := c.Request.ParseMultipartForm(10 << 20) // 10 MB max
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Retrieve file from form data
+	file, handler, err := c.Request.FormFile("avatar")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file missing"})
+		return
+	}
+	defer file.Close()
+	uploadResult := fileUpload.UploadImage2(file, handler.Filename)
+	if uploadResult == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var profilePayload models.User
+	profilePayload.ID = authUser.UserId
+	profilePayload.Avatar = uploadResult.SecureURL
+
+	if err := database.DB.Save(&profilePayload).Error; err != nil {
+		response.ErrorResponse(c, err, nil)
+		return
+	}
+
+	c.JSON(http.StatusCreated, profilePayload)
+
 }

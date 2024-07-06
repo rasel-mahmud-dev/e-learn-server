@@ -7,8 +7,11 @@ import (
 )
 
 type Config struct {
-	API_PORT     string
-	DATABASE_URI string
+	API_PORT              string
+	DATABASE_URI          string
+	CLOUDINARY_CLOUD_NAME string
+	CLOUDINARY_API_KEY    string
+	CLOUDINARY_API_SECRET string
 }
 
 var Cfg *Config
@@ -21,8 +24,11 @@ func LoadConfig() {
 	}
 
 	Cfg = &Config{
-		API_PORT:     os.Getenv("API_PORT"),
-		DATABASE_URI: os.Getenv("DATABASE_URI"),
+		API_PORT:              os.Getenv("API_PORT"),
+		DATABASE_URI:          os.Getenv("DATABASE_URI"),
+		CLOUDINARY_CLOUD_NAME: os.Getenv("CLOUDINARY_CLOUD_NAME"),
+		CLOUDINARY_API_KEY:    os.Getenv("CLOUDINARY_API_KEY"),
+		CLOUDINARY_API_SECRET: os.Getenv("CLOUDINARY_API_SECRET"),
 	}
 
 }
