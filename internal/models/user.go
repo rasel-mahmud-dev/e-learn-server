@@ -1,26 +1,22 @@
 package models
 
 import (
-	"e-learn/internal/database"
-	"gorm.io/gorm"
+	"database/sql"
+	"fmt"
 	"time"
 )
 
 type User struct {
-	ID        uint           ` json:"id" gorm:"primaryKey"`
-	DeletedAt gorm.DeletedAt `json:"deletedAt" gorm:"index"`
-	CreatedAt time.Time      ` json:"createdAt,omitempty" json:"CreatedAt" gorm:"not null"`
-	UpdatedAt time.Time      ` json:"updatedAt,omitempty" json:"UpdatedAt" gorm:"not null"`
-
-	FullName         string     `json:"fullName,omitempty" gorm:"not null"`
-	Avatar           string     `json:"avatar,omitempty" gorm:""`
-	Username         string     `json:"username,omitempty" gorm:"unique;not null"`
-	Email            string     `json:"email,omitempty" gorm:"unique;not null"`
-	PasswordHash     string     `json:"password,omitempty" gorm:"not null"`
-	RegistrationDate time.Time  `json:"registrationDate,omitempty" gorm:"not null"`
-	LastLogin        *time.Time `json:"lastLogin,omitempty" gorm:"default:null"`
-	Courses          []*Course  `json:"courses,omitempty" gorm:"many2many:user_courses;"` // Assuming Courses model is defined
-	Reviews          []*Review  `json:"reviews,omitempty" gorm:"foreignKey:UserID"`       // Assuming Reviews model is defined
+	ID               *int64     `json:"id,omitempty"`
+	CreatedAt        *time.Time `json:"created_at,omitempty"`
+	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
+	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
+	Username         string     `json:"username,omitempty"`
+	Email            string     `json:"email,omitempty"`
+	PasswordHash     string     `json:"password_hash,omitempty"`
+	RegistrationDate time.Time  `json:"registration_date,omitempty"`
+	LastLogin        *time.Time `json:"last_login,omitempty"`
+	Avatar           *string    `json:"avatar,omitempty"`
 }
 
 func (User) TableName() string {
@@ -29,6 +25,72 @@ func (User) TableName() string {
 
 func GetLoggedUserInfo(userId uint) *User {
 	var user User
-	database.DB.First(&user).Select("id,  fullName, username, email").Where("id = ?", userId)
+	//database.DB.First(&user).Select("id,  fullName, username, email").Where("id = ?", userId)
 	return &user
+}
+
+func GetUsersBySelect(db *sql.DB, columns []string) ([]User, error) {
+	table := "users"
+	validTables := map[string]bool{table: true}
+	validColumns := map[string]bool{
+		"id":                true,
+		"created_at":        true,
+		"updated_at":        true,
+		"deleted_at":        true,
+		"username":          true,
+		"email":             true,
+		"password_hash":     true,
+		"registration_date": true,
+		"last_login":        true,
+		"avatar":            true,
+	}
+
+	if !validTables[table] {
+		return nil, fmt.Errorf("invalid table name")
+	}
+
+	for _, col := range columns {
+		if !validColumns[col] {
+			return nil, fmt.Errorf("invalid column name: %s", col)
+		}
+	}
+
+	// Build the query string
+	//query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columns, ", "), table)
+	//
+	//// Execute the query
+	//rows, err := db.Query(query)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer rows.Close()
+	//
+	var users []User
+	//for rows.Next() {
+	//	// Create a slice of interface{} to hold the column values
+	//	values := make([]interface{}, len(columns))
+	//	valuePtrs := make([]interface{}, len(columns))
+	//	for i := range columns {
+	//		valuePtrs[i] = &values[i]
+	//	}
+	//
+	//	// Scan the row into the value pointers
+	//	if err := rows.Scan(valuePtrs...); err != nil {
+	//		return nil, err
+	//	}
+	//
+	//	// Create a User instance and populate it
+	//	user := User{}
+	//	for i, col := range columns {
+	//		field := reflect.ValueOf(&user).Elem().FieldByNameFunc(func(fieldName string) bool {
+	//			return strings.EqualFold(fieldName, col)
+	//		})
+	//		if field.IsValid() && field.CanSet() {
+	//			field.Set(reflect.ValueOf(values[i]))
+	//		}
+	//	}
+	//	users = append(users, user)
+	//}
+	//
+	return users, nil
 }

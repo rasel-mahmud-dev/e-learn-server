@@ -1,18 +1,20 @@
 package database
 
 import (
+	"database/sql"
 	"e-learn/internal/config"
 	"fmt"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	_ "github.com/lib/pq"
 )
 
-var DB *gorm.DB
+var DB *sql.DB
 
 func InitDB() {
-	db, err := gorm.Open(postgres.Open(config.Cfg.DATABASE_URI), &gorm.Config{})
+	connStr := config.Cfg.DATABASE_URI
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
+	fmt.Println("Database connection established")
 	DB = db
 }

@@ -5,9 +5,9 @@ import (
 )
 
 func SeedDb(DB *gorm.DB) {
+	//DB.AutoMigrate(&models.User{})
 	//DB.AutoMigrate(&models.Course{})
 	//DB.Delete(&models.User{})
-	//DB.AutoMigrate(&models.User{})
 	//DB.AutoMigrate(&models.Review{})
 	//DB.AutoMigrate(&models.Course{})
 	//DB.AutoMigrate(&models.Category{})

@@ -1,24 +1,42 @@
 version: '3.8'
+volumes:
+  db:
 
 services:
-  web:
+  api:
     build: .
     ports:
-      - "3001:3000"
+      - "7080:7080"
     volumes:
       - .:/usr/src/app
-    command: air ./cmd/main.go
+    #    command: air
 
-#  db:
-#    image: postgres:alpine
+    networks:
+      - app-network
+
+#  postgres:
+#    image: postgres:16-bullseye
+#    env_file:
+#      - .env
 #    environment:
-#      - POSTGRES_USER=${DB_USER}
-#      - POSTGRES_PASSWORD=${DB_PASSWORD}
-#      - POSTGRES_DB=${DB_NAME}
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: sa
+#      POSTGRES_DB: e-learn
 #    ports:
-#      - "5432:5432"
+#      - "5438:5432"
 #    volumes:
-#      - postgres-db:/var/lib/postgresql/data
+#      - db:/var/lib/postgresql/data
+#    #      - ./db-seed.sql:/docker-entrypoint-initdb.d/db-seed.sql
+#    restart: always
+#    networks:
+#      app-network:
+#    healthcheck:
+#      test: [ "CMD-SHELL", "pg_isready -U postgres -d e-learn -h localhost -p 5432" ]
+#      interval: 10s
+#      timeout: 20s
+#      retries: 5
 
-volumes:
-  postgres-db:
+
+networks:
+  app-network:
+    driver: bridge
