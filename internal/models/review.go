@@ -1,6 +1,7 @@
 package models
 
 import (
+	"e-learn/internal/models/users"
 	"gorm.io/gorm"
 	"time"
 )
@@ -15,7 +16,7 @@ type Review struct {
 	Rating     int            `gorm:"not null"`
 	Comment    string         `gorm:"type:text"`
 	ReviewDate time.Time      `gorm:"not null"`
-	User       *User          `gorm:"foreignKey:UserID"`   // Belongs To User
+	User       *users.User    `gorm:"foreignKey:UserID"`   // Belongs To User
 	Course     *Course        `gorm:"foreignKey:CourseID"` // Belongs To Course
 }
 

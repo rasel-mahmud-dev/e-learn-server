@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"e-learn/internal/database"
-	"e-learn/internal/models"
+	"database/sql"
+	"e-learn/internal/models/users"
 	"e-learn/internal/response"
 	"e-learn/internal/utils"
 	"errors"
@@ -11,33 +11,40 @@ import (
 )
 
 func Login(c *gin.Context) {
-	var newUser models.User
+	var newUser users.User
 
 	if err := c.ShouldBindJSON(&newUser); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if newUser.Email == "" || newUser.PasswordHash == "" {
+	if newUser.Email == "" || newUser.Password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Email or Password is nil"})
 		return
 	}
 
-	var user models.User
+	user, err := users.GetUserByEmail(c, []string{"id", "email", "password", "username", "avatar"}, func(row *sql.Row, user *users.User) error {
+		return row.Scan(
+			&user.ID,
+			&user.Email,
+			&user.Password,
+			&user.Username,
+			&user.Avatar,
+		)
+	}, newUser.Email)
 
-	row := database.DB.Table("users").Select("id, email, password_hash, username, full_name").
-		Where("email = ?", newUser.Email).
-		Row()
-
-	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Username, &user.FullName)
 	if err != nil {
-		response.ErrorResponse(c, err, map[string]string{
-			"no rows": "User not registered.",
-		})
+		response.ErrorResponse(c, err, nil)
 		return
 	}
 
-	if user.PasswordHash != newUser.PasswordHash {
+	if user == nil {
+		response.ErrorResponse(c, err, map[string]string{
+			"no rows": "User not registered.",
+		})
+	}
+
+	if user.Password != newUser.Password {
 		response.ErrorResponse(c, errors.New("Wrong Password"), nil)
 		return
 	}
@@ -47,8 +54,10 @@ func Login(c *gin.Context) {
 		UserId: user.ID,
 	})
 
-	payloadAuthInfo := models.GetLoggedUserInfo(user.ID)
-
+	payloadAuthInfo, err := users.GetLoggedUserInfo(c, user.ID)
+	if payloadAuthInfo == nil {
+		response.ErrorResponse(c, err, nil)
+	}
 	c.JSON(http.StatusOK, gin.H{"token": tokenString, "auth": payloadAuthInfo})
 }
 
@@ -59,10 +68,13 @@ func VerifyUser(c *gin.Context) {
 		return
 	}
 
-	user := models.GetLoggedUserInfo(authUser.UserId)
+	payloadAuthInfo, err := users.GetLoggedUserInfo(c, authUser.UserId)
+	if payloadAuthInfo == nil {
+		response.ErrorResponse(c, err, nil)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"auth": user,
+		"auth": payloadAuthInfo,
 	})
 
 }

@@ -9,7 +9,7 @@ var secretKey = []byte("your-secret-key")
 
 type JwtPayload struct {
 	Email  string `json:"email"`
-	UserId uint   `json:"id"`
+	UserId uint64 `json:"id"`
 }
 
 type MyCustomClaims struct {

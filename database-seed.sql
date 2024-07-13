@@ -7,11 +7,12 @@ CREATE TABLE IF NOT EXISTS public.users
     deleted_at        timestamp with time zone,
     username          text                     not null,
     email             text                     not null,
-    password_hash     text                     not null,
+    password     text                     not null,
     registration_date timestamp with time zone not null,
     last_login        timestamp with time zone,
     avatar            text
 );
+
 
 -- Create indexes for users table
 CREATE UNIQUE INDEX IF NOT EXISTS uni_users_email ON public.users USING btree (email);

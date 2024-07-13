@@ -9,7 +9,7 @@ func GetAuthUser(c *gin.Context) *JwtPayload {
 	auth, isExists := c.Get("auth")
 	if !isExists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"errorMessage": "Authentication Failed",
+			"error": "Authentication Failed",
 		})
 		return nil
 	}
@@ -17,7 +17,7 @@ func GetAuthUser(c *gin.Context) *JwtPayload {
 	authData, ok := auth.(*JwtPayload)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"errorMessage": "Invalid authentication data",
+			"error": "Invalid authentication data",
 		})
 		return nil
 	}

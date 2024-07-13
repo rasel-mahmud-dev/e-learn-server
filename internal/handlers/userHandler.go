@@ -1,187 +1,244 @@
 package handlers
 
 import (
-	"e-learn/internal/database"
+	"database/sql"
+	"e-learn/internal/fileUpload"
 	"e-learn/internal/models"
+	"e-learn/internal/models/users"
+	"e-learn/internal/response"
+	"e-learn/internal/utils"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 func GetUsers(c *gin.Context) {
-	rows, err := database.DB.QueryContext(c, "SELECT id, created_at, updated_at, deleted_at, username, email, password_hash, registration_date, last_login, avatar FROM public.users")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer rows.Close()
-
-	var users []models.User
-	for rows.Next() {
-		var user models.User
-		if err := rows.Scan(
+	users, err := users.GetUsersBySelect(c, []string{"id", "email", "username", "avatar"}, func(rows *sql.Rows) error {
+		var user users.User
+		return rows.Scan(
 			&user.ID,
-			&user.CreatedAt,
-			&user.UpdatedAt,
-			&user.DeletedAt,
-			&user.Username,
 			&user.Email,
-			&user.PasswordHash,
-			&user.RegistrationDate,
-			&user.LastLogin,
+			&user.Username,
 			&user.Avatar,
-		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		users = append(users, user)
-	}
+		)
+	})
 
-	// Check for errors from iterating over rows
-	if err := rows.Err(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err != nil {
+		response.ErrorResponse(c, err, nil)
 		return
 	}
 
-	// Create response without the PasswordHash field
-	var response []models.User
-	for _, user := range users {
-		response = append(response, models.User{
-			ID:               user.ID,
-			CreatedAt:        user.CreatedAt,
-			UpdatedAt:        user.UpdatedAt,
-			DeletedAt:        user.DeletedAt,
-			Username:         user.Username,
-			Email:            user.Email,
-			RegistrationDate: user.RegistrationDate,
-			LastLogin:        user.LastLogin,
-			Avatar:           user.Avatar,
-		})
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusCreated, users)
 }
 
 func GetUsersProfile(c *gin.Context) {
-	//
-	//profileId := c.Param("profileId")
-	//
-	var profile models.Profile
-	//
-	//result := database.DB.Table("profiles").Where("user_id = ?", profileId).First(&profile)
-	//
-	//if result.Error != nil {
-	//	response.ErrorResponse(c, result.Error, nil)
-	//	return
-	//}
-	//
-	//profile.User = nil
-	//
-	c.JSON(http.StatusOK, profile)
+
+	profileId := c.Param("profileId")
+
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("Unauthorization"), nil)
+		return
+	}
+
+	atoi, err := strconv.Atoi(profileId)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	myUint64 := uint64(atoi) // Convert int to uint64
+
+	columns := []string{
+		"id",
+		"created_at",
+		"updated_at",
+		"first_name",
+		"last_name",
+		"headline",
+		"language",
+		"website",
+		"twitter",
+		"facebook",
+		"youtube",
+		"github",
+		"about_me",
+		"user_id",
+	}
+
+	payloadAuthInfo, err := models.GetProfileById(c, columns, func(row *sql.Row, profile *models.Profile) error {
+		return row.Scan(
+			&profile.ID,
+			&profile.CreatedAt,
+			&profile.UpdatedAt,
+			&profile.FirstName,
+			&profile.LastName,
+			&profile.Headline,
+			&profile.Language,
+			&profile.Website,
+			&profile.Twitter,
+			&profile.Facebook,
+			&profile.YouTube,
+			&profile.Github,
+			&profile.AboutMe,
+			&profile.UserId,
+		)
+	}, myUint64)
+
+	if payloadAuthInfo == nil {
+		response.ErrorResponse(c, err, nil)
+		return
+	}
+
+	camelCaseProfile := models.ProfileWithCamelCaseJSON{
+		Profile:   *payloadAuthInfo,
+		DeletedAt: payloadAuthInfo.DeletedAt,
+		CreatedAt: payloadAuthInfo.CreatedAt,
+		UpdatedAt: payloadAuthInfo.UpdatedAt,
+		FirstName: payloadAuthInfo.FirstName,
+		LastName:  payloadAuthInfo.LastName,
+		AboutMe:   payloadAuthInfo.AboutMe,
+		UserId:    payloadAuthInfo.UserId,
+	}
+
+	camelCaseProfile.Profile.AboutMe = nil
+	camelCaseProfile.Profile.UpdatedAt = nil
+	camelCaseProfile.Profile.UserId = 0
+	camelCaseProfile.Profile.FirstName = nil
+	camelCaseProfile.Profile.LastName = nil
+	camelCaseProfile.Profile.CreatedAt = nil
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": camelCaseProfile,
+	})
 
 }
 
 func CreateUser(c *gin.Context) {
-	//var newUser models.User
-	//
-	//// Bind JSON or form data
-	//if err := c.ShouldBindJSON(&newUser); err != nil {
-	//	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	//	return
-	//}
-	//
-	//newUser.RegistrationDate = time.Now()
-	//
-	//// Save to database
-	//result := database.DB.Create(&newUser)
-	//if result.Error != nil {
-	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-	//	return
-	//}
+	var newUser users.User
 
-	models.GetUsersBySelect(database.DB, []string{"id", "email", "username", "avatar"})
+	if err := c.ShouldBindJSON(&newUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	// Return success response
-	c.JSON(http.StatusCreated, "hi")
+	user, err := users.GetUserByEmail(c, []string{"id", "email", "username", "avatar"}, func(row *sql.Row, user *users.User) error {
+		return row.Scan(
+			&user.ID,
+			&user.Email,
+			&user.Username,
+			&user.Avatar,
+		)
+	}, newUser.Email)
+
+	if err != nil {
+		response.ErrorResponse(c, err, nil)
+		return
+	}
+
+	if user != nil {
+		response.ErrorResponse(c, errors.New("users is already registered"), nil)
+		return
+	}
+
+	newUser.RegistrationDate = time.Now()
+
+	result, error := users.CreateUser(c, &newUser)
+	if error != nil {
+		response.ErrorResponse(c, error, map[string]string{
+			"uni_users_email": "User already registered.",
+		})
+		return
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"data": result})
+
 }
 
 func UpdateProfile(c *gin.Context) {
-	//var payload models.Profile
-	//
-	//if err := c.ShouldBindJSON(&payload); err != nil {
-	//	response.ErrorResponse(c, err, nil)
-	//	return
-	//}
-	//
-	//authUser := utils.GetAuthUser(c)
-	//if authUser == nil {
-	//	response.ErrorResponse(c, errors.New("unauthorization"), nil)
-	//	return
-	//}
-	//
-	//payload.UserId = authUser.UserId
-	//
-	//var existingProfile models.Profile
-	//result := database.DB.Table("profiles").Where("user_id = ?", payload.UserId).First(&existingProfile)
-	//
-	//if result.Error != nil {
-	//	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-	//		// Profile does not exist, create a new one
-	//		if err := database.DB.Create(&payload).Error; err != nil {
-	//			response.ErrorResponse(c, err, nil)
-	//			return
-	//		}
-	//	} else {
-	//		response.ErrorResponse(c, result.Error, nil)
-	//		return
-	//	}
-	//} else {
-	//	payload.ID = existingProfile.ID // Ensure we're updating the correct record
-	//	if err := database.DB.Save(&payload).Error; err != nil {
-	//		response.ErrorResponse(c, err, nil)
-	//		return
-	//	}
-	//}
-	//
-	//c.JSON(http.StatusCreated, payload)
+	var payload *models.ProfileWithCamelCaseJSON
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		response.ErrorResponse(c, err, nil)
+		return
+	}
+
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorization"), nil)
+		return
+	}
+
+	payload2 := models.Profile{
+		FirstName: payload.FirstName,
+		LastName:  payload.LastName,
+		Headline:  payload.Headline,
+		Language:  payload.Language,
+		Website:   payload.Website,
+		Twitter:   payload.Twitter,
+		Facebook:  payload.Facebook,
+		YouTube:   payload.YouTube,
+		Github:    payload.Github,
+		AboutMe:   payload.AboutMe,
+	}
+
+	payload2.UserId = authUser.UserId
+
+	_, err := models.UpdateProfile(c, &payload2)
+
+	if err != nil {
+		response.ErrorResponse(c, err, nil)
+		return
+	}
+
+	c.JSON(http.StatusCreated, payload)
 }
 
 func UpdateProfilePhoto(c *gin.Context) {
-	//
-	//authUser := utils.GetAuthUser(c)
-	//if authUser == nil {
-	//	response.ErrorResponse(c, errors.New("unauthorization"), nil)
-	//	return
-	//}
-	//
-	//// Parse multipart form
-	//err := c.Request.ParseMultipartForm(10 << 20) // 10 MB max
-	//if err != nil {
-	//	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	//	return
-	//}
-	//
-	//// Retrieve file from form data
-	//file, handler, err := c.Request.FormFile("avatar")
-	//if err != nil {
-	//	c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file missing"})
-	//	return
-	//}
-	//defer file.Close()
-	//uploadResult := fileUpload.UploadImage2(file, handler.Filename)
-	//if uploadResult == nil {
-	//	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	//	return
-	//}
-	//
-	//var profilePayload models.User
-	//profilePayload.ID = authUser.UserId
-	//profilePayload.Avatar = uploadResult.SecureURL
-	//
+
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorization"), nil)
+		return
+	}
+
+	// Parse multipart form
+	err := c.Request.ParseMultipartForm(10 << 20) // 10 MB max
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Retrieve file from form data
+	file, handler, err := c.Request.FormFile("avatar")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file missing"})
+		return
+	}
+	defer file.Close()
+	uploadResult := fileUpload.UploadImage2(file, handler.Filename)
+	if uploadResult == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var profilePayload users.User
+	profilePayload.ID = authUser.UserId
+	profilePayload.Avatar = utils.StringPtr(uploadResult.SecureURL)
+
+	_, err = users.UpdateProfilePhoto(c, &profilePayload)
+	if err != nil {
+		return
+	}
+
 	//if err := database.DB.Save(&profilePayload).Error; err != nil {
 	//	response.ErrorResponse(c, err, nil)
 	//	return
 	//}
-	//
-	//c.JSON(http.StatusCreated, profilePayload)
+
+	c.JSON(http.StatusCreated, profilePayload)
 
 }
