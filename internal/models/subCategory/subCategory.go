@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"e-learn/internal/database"
 	"e-learn/internal/utils"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strings"
@@ -82,4 +83,42 @@ func BatchInsert(c *gin.Context, categories []SubCategoryWithCamelCaseJSON) erro
 
 	return nil
 
+}
+
+func GetOneBySlug(c *gin.Context, columns []string, scanFunc func(*sql.Row, *SubCategoryWithCamelCaseJSON) error, slug string) (*SubCategoryWithCamelCaseJSON, error) {
+	query := fmt.Sprintf("SELECT %s FROM sub_categories WHERE slug = $1", strings.Join(columns, ", "))
+
+	user := &SubCategoryWithCamelCaseJSON{}
+	row := database.DB.QueryRowContext(c, query, slug)
+
+	err := scanFunc(row, user)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil // No users found
+		}
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func GetOneById(c *gin.Context, columns []string, scanFunc func(*sql.Row, *SubCategoryWithCamelCaseJSON) error, id uint64) (*SubCategoryWithCamelCaseJSON, error) {
+	query := fmt.Sprintf("SELECT %s FROM users WHERE id = $1", strings.Join(columns, ", "))
+
+	// Prepare a variable to hold the users data
+	user := &SubCategoryWithCamelCaseJSON{}
+
+	// Execute the query
+	row := database.DB.QueryRowContext(c, query, id)
+
+	// Use the scan function to populate the users struct
+	err := scanFunc(row, user)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil // No users found
+		}
+		return nil, err
+	}
+
+	return user, nil
 }

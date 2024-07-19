@@ -6,6 +6,7 @@ import (
 	"e-learn/internal/models/subCategory"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 func GetCategories(c *gin.Context) {
@@ -51,6 +52,44 @@ func GetSubCategories(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": items,
+	})
+}
+
+func GetSubCategory(c *gin.Context) {
+
+	slug := c.Query("slug")
+	id := c.Query("id")
+
+	if slug == "" && id == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
+		return
+	}
+
+	var err error
+	var bySlug *subCategory.SubCategoryWithCamelCaseJSON
+	if slug != "" {
+		bySlug, err = subCategory.GetOneBySlug(c, []string{"id", "title", "slug", "description", "image"}, func(row *sql.Row, json *subCategory.SubCategoryWithCamelCaseJSON) error {
+			return row.Scan(&json.ID, &json.Title, &json.Slug, &json.Image, &json.Description)
+		}, slug)
+		if err != nil {
+			return
+		}
+	} else {
+		parseInt, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			return
+		}
+
+		bySlug, err = subCategory.GetOneById(c, []string{"id", "title", "slug", "description", "image"}, func(row *sql.Row, json *subCategory.SubCategoryWithCamelCaseJSON) error {
+			return row.Scan(&json.ID, &json.Title, &json.Slug, &json.Image, &json.Description)
+		}, uint64(parseInt))
+		if err != nil {
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": bySlug,
 	})
 }
 
