@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"e-learn/internal/models/category"
+	"e-learn/internal/models/subCategory"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -30,28 +31,29 @@ func GetCategories(c *gin.Context) {
 	})
 }
 
-//func GetCategories(c *gin.Context) {
-//
-//	var users []models.Category
-//	result := database.DB.Find(&users)
-//	if result.Error != nil {
-//		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-//		return
-//	}
-//
-//	var response []models.Category
-//	for _, user := range users {
-//		response = append(response, models.Category{
-//			ID:    user.ID,
-//			Title: user.Title,
-//			Slug:  user.Slug,
-//		})
-//	}
-//
-//	c.JSON(http.StatusOK, response)
-//
-//}
-//
+func GetSubCategories(c *gin.Context) {
+
+	items, err := subCategory.GetAllBySelect(c, []string{"id", "title", "slug", "image", "description", "created_at"}, func(rows *sql.Rows, category *subCategory.SubCategoryWithCamelCaseJSON) error {
+		return rows.Scan(
+			&category.ID,
+			&category.Title,
+			&category.Slug,
+			&category.Image,
+			&category.Description,
+			&category.CreatedAt,
+		)
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": items,
+	})
+}
+
 //func GetTopics(c *gin.Context) {
 //
 //	var users []models.Topics
@@ -114,6 +116,22 @@ func CreateCategories(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data": categoriesBody,
+	})
+}
+
+func CreateSubCategories(c *gin.Context) {
+	var subCategoriesBody []subCategory.SubCategoryWithCamelCaseJSON
+
+	// Bind JSON or form data
+	if err := c.ShouldBindJSON(&subCategoriesBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	subCategory.BatchInsert(c, subCategoriesBody)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": subCategoriesBody,
 	})
 }
 
