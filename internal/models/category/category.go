@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"e-learn/internal/database"
 	"e-learn/internal/utils"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strings"
@@ -18,6 +19,7 @@ type Category struct {
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 	Title       string     `json:"title"`
 	Slug        string     `json:"slug"`
+	Type        *string    `json:"type,omitempty"` // category / subcategory // topic
 	Image       *string    `json:"image,omitempty"`
 	Description *string    `json:"description,omitempty"`
 }
@@ -29,11 +31,11 @@ type CategoryWithCamelCaseJSON struct {
 	DeletedAt *time.Time `json:"deletedAt,omitempty"`
 }
 
-func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *CategoryWithCamelCaseJSON) error) ([]CategoryWithCamelCaseJSON, error) {
+func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *CategoryWithCamelCaseJSON) error, where string) ([]CategoryWithCamelCaseJSON, error) {
 	table := "categories"
 
 	// Build the query string
-	query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columns, ", "), table)
+	query := fmt.Sprintf("SELECT %s FROM %s %s", strings.Join(columns, ", "), table, where)
 
 	// Execute the query
 	rows, err := database.DB.QueryContext(c, query)
@@ -58,11 +60,11 @@ func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *
 	return users, nil
 }
 
-func BatchInsert(c *gin.Context, categories []CategoryWithCamelCaseJSON) error {
+func BatchInsert(c *gin.Context, categories []CategoryWithCamelCaseJSON, asType string) error {
 
 	for _, category := range categories {
 		// Build the query string
-		query := "insert into categories(title, slug, image, description, created_at) values ($1, $2, $3, $4, $5)"
+		query := "insert into categories(title, slug, image, description, created_at, type) values ($1, $2, $3, $4, $5, $6)"
 
 		result, err := database.DB.ExecContext(
 			c,
@@ -72,9 +74,11 @@ func BatchInsert(c *gin.Context, categories []CategoryWithCamelCaseJSON) error {
 			category.Image,
 			category.Description,
 			time.Now(),
+			asType,
 		)
 
 		if err != nil {
+			fmt.Println(err)
 			fmt.Println("errllsdjflskdfjlsdkf")
 		}
 
@@ -85,4 +89,22 @@ func BatchInsert(c *gin.Context, categories []CategoryWithCamelCaseJSON) error {
 
 	return nil
 
+}
+
+func GetOne(c *gin.Context, columns []string, scanFunc func(*sql.Row, *CategoryWithCamelCaseJSON) error, where string, values []any) (*CategoryWithCamelCaseJSON, error) {
+	query := fmt.Sprintf("SELECT %s FROM categories %s ", strings.Join(columns, ", "), where)
+
+	user := &CategoryWithCamelCaseJSON{}
+	row := database.DB.QueryRowContext(c, query, values...)
+
+	// Use the scan function to populate the users struct
+	err := scanFunc(row, user)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil // No users found
+		}
+		return nil, err
+	}
+
+	return user, nil
 }

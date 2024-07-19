@@ -55,32 +55,15 @@ CREATE TABLE IF NOT EXISTS public.categories
     title       varchar            not null,
     slug        varchar            not null,
     image       varchar,
-    description varchar
+    description varchar,
+    type        varchar                  default 'category'
 );
+
 
 -- Create indexes for categories table
 CREATE UNIQUE INDEX IF NOT EXISTS uni_categories_title ON public.categories USING btree (title);
 CREATE UNIQUE INDEX IF NOT EXISTS uni_categories_slug ON public.categories USING btree (slug);
 CREATE INDEX IF NOT EXISTS idx_categories_deleted_at ON public.categories USING btree (deleted_at);
-
-
--- Create categories table
-CREATE TABLE IF NOT EXISTS public.sub_categories
-(
-    id          serial primary key not null,
-    created_at  timestamp with time zone default current_timestamp,
-    updated_at  timestamp with time zone default current_timestamp,
-    deleted_at  timestamp with time zone,
-    title       varchar            not null,
-    slug        varchar            not null,
-    image       varchar,
-    description varchar
-);
-
--- Create indexes for categories table
-CREATE UNIQUE INDEX IF NOT EXISTS uni_sub_categories_title ON public.sub_categories USING btree (title);
-CREATE UNIQUE INDEX IF NOT EXISTS uni_sub_categories_slug ON public.sub_categories USING btree (slug);
-CREATE INDEX IF NOT EXISTS idx_sub_categories_deleted_at ON public.sub_categories USING btree (deleted_at);
 
 
 -- Create courses table

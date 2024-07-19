@@ -3,10 +3,8 @@ package handlers
 import (
 	"database/sql"
 	"e-learn/internal/models/category"
-	"e-learn/internal/models/subCategory"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
 )
 
 func GetCategories(c *gin.Context) {
@@ -20,7 +18,7 @@ func GetCategories(c *gin.Context) {
 			&category.Description,
 			&category.CreatedAt,
 		)
-	})
+	}, "where type = 'category' ")
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -34,16 +32,19 @@ func GetCategories(c *gin.Context) {
 
 func GetSubCategories(c *gin.Context) {
 
-	items, err := subCategory.GetAllBySelect(c, []string{"id", "title", "slug", "image", "description", "created_at"}, func(rows *sql.Rows, category *subCategory.SubCategoryWithCamelCaseJSON) error {
-		return rows.Scan(
-			&category.ID,
-			&category.Title,
-			&category.Slug,
-			&category.Image,
-			&category.Description,
-			&category.CreatedAt,
-		)
-	})
+	items, err := category.GetAllBySelect(
+		c,
+		[]string{"id", "title", "slug", "image", "description", "created_at"},
+		func(rows *sql.Rows, category *category.CategoryWithCamelCaseJSON) error {
+			return rows.Scan(
+				&category.ID,
+				&category.Title,
+				&category.Slug,
+				&category.Image,
+				&category.Description,
+				&category.CreatedAt,
+			)
+		}, "where type = 'subcategory' ")
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -65,25 +66,24 @@ func GetSubCategory(c *gin.Context) {
 		return
 	}
 
+	columns := []string{"id", "title", "slug", "description", "image"}
+
 	var err error
-	var bySlug *subCategory.SubCategoryWithCamelCaseJSON
+	var bySlug *category.CategoryWithCamelCaseJSON
 	if slug != "" {
-		bySlug, err = subCategory.GetOneBySlug(c, []string{"id", "title", "slug", "description", "image"}, func(row *sql.Row, json *subCategory.SubCategoryWithCamelCaseJSON) error {
+		bySlug, err = category.GetOne(c, columns, func(row *sql.Row, json *category.CategoryWithCamelCaseJSON) error {
 			return row.Scan(&json.ID, &json.Title, &json.Slug, &json.Image, &json.Description)
-		}, slug)
+		}, "where slug = $1 AND type = $2", []any{slug, "subcategory"})
 		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
 			return
 		}
 	} else {
-		parseInt, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			return
-		}
-
-		bySlug, err = subCategory.GetOneById(c, []string{"id", "title", "slug", "description", "image"}, func(row *sql.Row, json *subCategory.SubCategoryWithCamelCaseJSON) error {
+		bySlug, err = category.GetOne(c, columns, func(row *sql.Row, json *category.CategoryWithCamelCaseJSON) error {
 			return row.Scan(&json.ID, &json.Title, &json.Slug, &json.Image, &json.Description)
-		}, uint64(parseInt))
+		}, "where id = $1 AND type = $2", []any{id, "subcategory"})
 		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
 			return
 		}
 	}
@@ -92,6 +92,23 @@ func GetSubCategory(c *gin.Context) {
 		"data": bySlug,
 	})
 }
+
+//func UpdateSubCategory(c *gin.Context) {
+//
+//	id := c.Param("id")
+//
+//	if id == "" {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
+//		return
+//	}
+//
+//	//var err error
+//	var bySlug *category.SubCategoryWithCamelCaseJSON
+//
+//	c.JSON(http.StatusOK, gin.H{
+//		"data": bySlug,
+//	})
+//}
 
 //func GetTopics(c *gin.Context) {
 //
@@ -151,7 +168,7 @@ func CreateCategories(c *gin.Context) {
 		return
 	}
 
-	category.BatchInsert(c, categoriesBody)
+	category.BatchInsert(c, categoriesBody, "category")
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data": categoriesBody,
@@ -159,7 +176,7 @@ func CreateCategories(c *gin.Context) {
 }
 
 func CreateSubCategories(c *gin.Context) {
-	var subCategoriesBody []subCategory.SubCategoryWithCamelCaseJSON
+	var subCategoriesBody []category.CategoryWithCamelCaseJSON
 
 	// Bind JSON or form data
 	if err := c.ShouldBindJSON(&subCategoriesBody); err != nil {
@@ -167,41 +184,25 @@ func CreateSubCategories(c *gin.Context) {
 		return
 	}
 
-	subCategory.BatchInsert(c, subCategoriesBody)
+	category.BatchInsert(c, subCategoriesBody, "subcategory")
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data": subCategoriesBody,
 	})
 }
 
-//func CreateTopics(c *gin.Context) {
-//	var titles []string
-//
-//	// Bind JSON or form data
-//	if err := c.ShouldBindJSON(&titles); err != nil {
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	var topics []models.Topics
-//	for i := range titles {
-//		title := titles[i]
-//		topics = append(topics, models.Topics{
-//			Title: title,
-//			Slug:  utils.Slugify(title),
-//		})
-//
-//	}
-//
-//	// Batch insert topics
-//	if err := database.DB.Create(&topics).Error; err != nil {
-//
-//		response.ErrorResponse(c, err, map[string]string{
-//			"unique": "Item already exist.",
-//		})
-//		return
-//	}
-//
-//	c.JSON(http.StatusCreated, topics)
-//
-//}
+func CreateTopics(c *gin.Context) {
+	var topicsBody []category.CategoryWithCamelCaseJSON
+
+	// Bind JSON or form data
+	if err := c.ShouldBindJSON(&topicsBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	category.BatchInsert(c, topicsBody, "topic")
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": topicsBody,
+	})
+}
