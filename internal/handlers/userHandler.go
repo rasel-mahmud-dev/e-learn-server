@@ -16,7 +16,7 @@ import (
 )
 
 func GetUsers(c *gin.Context) {
-	fmt.Println("hi")
+
 	users, err := users.GetUsersBySelect(c, []string{"id", "email", "username", "avatar"}, func(rows *sql.Rows, user *users.User) error {
 		return rows.Scan(
 			&user.ID,

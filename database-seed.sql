@@ -66,10 +66,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS uni_categories_slug ON public.categories USING
 CREATE INDEX IF NOT EXISTS idx_categories_deleted_at ON public.categories USING btree (deleted_at);
 
 
+DROP TABLE IF EXISTS public.courses;
 -- Create courses table
 CREATE TABLE IF NOT EXISTS public.courses
 (
     id           serial primary key not null,
+    course_id    uuid               not null,
     created_at   timestamp with time zone default current_timestamp,
     updated_at   timestamp with time zone default current_timestamp,
     deleted_at   timestamp with time zone,
@@ -77,7 +79,6 @@ CREATE TABLE IF NOT EXISTS public.courses
     title        text               not null unique,
     slug         text               not null,
     description  text               not null,
-    author_id    bigint             not null,
     publish_date timestamp with time zone,
     price        double precision   not null
 );
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS public.courses
 -- Create indexes for courses table
 CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_slug ON public.courses USING btree (slug);
 CREATE INDEX IF NOT EXISTS idx_courses_deleted_at ON public.courses USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_courses_course_id ON public.courses USING btree (course_id);
 
 -- Create topics table
 CREATE TABLE IF NOT EXISTS public.topics
@@ -101,3 +103,52 @@ CREATE TABLE IF NOT EXISTS public.topics
 CREATE UNIQUE INDEX IF NOT EXISTS uni_topics_title ON public.topics USING btree (title);
 CREATE UNIQUE INDEX IF NOT EXISTS uni_topics_slug ON public.topics USING btree (slug);
 CREATE INDEX IF NOT EXISTS idx_topics_deleted_at ON public.topics USING btree (deleted_at);
+
+
+
+create table authors_courses
+(
+    id        serial primary key,
+    author_id int  not null,
+    course_id uuid not null,
+    CONSTRAINT  unique_author_course unique (author_id, course_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_authors_courses ON public.authors_courses USING btree (author_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_authors_courses ON public.authors_courses USING btree (course_id);
+
+
+
+
+create table courses_categories
+(
+    id        serial primary key,
+    category_id int  not null,
+    course_id uuid not null,
+    CONSTRAINT  unique_category_course unique (category_id, course_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_categories USING btree (category_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_categories USING btree (course_id);
+
+
+create table courses_sub_categories
+(
+    id        serial primary key,
+    category_id int  not null,
+    course_id uuid not null,
+    CONSTRAINT  unique_sub_category_course unique (category_id, course_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_sub_categories USING btree (category_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_sub_categories USING btree (course_id);
+
+
+create table courses_topics
+(
+    id        serial primary key,
+    topic_id int  not null,
+    course_id uuid not null,
+    CONSTRAINT  unique_topic_course unique (topic_id, course_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_topics USING btree (topic_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_topics USING btree (course_id);
+
+
