@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.users
     deleted_at        timestamp with time zone,
     username          text                     not null,
     email             text                     not null,
-    password     text                     not null,
+    password          text                     not null,
     registration_date timestamp with time zone not null,
     last_login        timestamp with time zone,
     avatar            text
@@ -48,13 +48,16 @@ CREATE INDEX IF NOT EXISTS idx_profiles_deleted_at ON public.profiles USING btre
 -- Create categories table
 CREATE TABLE IF NOT EXISTS public.categories
 (
-    id         serial primary key not null,
-    created_at timestamp with time zone default current_timestamp,
-    updated_at timestamp with time zone default current_timestamp,
-    deleted_at timestamp with time zone,
-    title      varchar            not null,
-    slug       varchar            not null
+    id          serial primary key not null,
+    created_at  timestamp with time zone default current_timestamp,
+    updated_at  timestamp with time zone default current_timestamp,
+    deleted_at  timestamp with time zone,
+    title       varchar            not null,
+    slug        varchar            not null,
+    image       varchar,
+    description varchar
 );
+
 
 -- Create indexes for categories table
 CREATE UNIQUE INDEX IF NOT EXISTS uni_categories_title ON public.categories USING btree (title);

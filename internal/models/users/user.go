@@ -61,7 +61,7 @@ func GetLoggedUserInfo(c *gin.Context, userId uint64) (*User, error) {
 	return payloadAuthInfo, err
 }
 
-func GetUsersBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows) error) ([]User, error) {
+func GetUsersBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *User) error) ([]User, error) {
 	table := "users"
 
 	// Build the query string
@@ -77,7 +77,7 @@ func GetUsersBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows)
 	var users []User
 	for rows.Next() {
 		var user User
-		if err := scanFunc(rows); err != nil {
+		if err := scanFunc(rows, &user); err != nil {
 			return nil, err
 		}
 		users = append(users, user)

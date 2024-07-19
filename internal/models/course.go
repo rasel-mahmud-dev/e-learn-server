@@ -1,6 +1,7 @@
 package models
 
 import (
+	"e-learn/internal/models/category"
 	"gorm.io/gorm"
 	"time"
 )
@@ -18,7 +19,7 @@ type Course struct {
 	AuthorID    uint       ` json:"authorId" gorm:"not null;foreignKey:UserID"`
 	PublishDate *time.Time `json:"publishDate,omitempty" gorm:""`
 
-	Price      float64     ` json:"price" gorm:"not null"`
-	Categories []*Category ` json:"categories,omitempty" gorm:"many2many:courses_categories;"`
-	Topics     []*Topics   ` json:"topics,omitempty" gorm:"many2many:courses_topics;"`
+	Price      float64              ` json:"price" gorm:"not null"`
+	Categories []*category.Category ` json:"categories,omitempty" gorm:"many2many:courses_categories;"`
+	Topics     []*Topics            ` json:"topics,omitempty" gorm:"many2many:courses_topics;"`
 }

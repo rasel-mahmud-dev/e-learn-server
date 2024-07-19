@@ -16,8 +16,8 @@ import (
 )
 
 func GetUsers(c *gin.Context) {
-	users, err := users.GetUsersBySelect(c, []string{"id", "email", "username", "avatar"}, func(rows *sql.Rows) error {
-		var user users.User
+	fmt.Println("hi")
+	users, err := users.GetUsersBySelect(c, []string{"id", "email", "username", "avatar"}, func(rows *sql.Rows, user *users.User) error {
 		return rows.Scan(
 			&user.ID,
 			&user.Email,
@@ -114,7 +114,6 @@ func GetUsersProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": camelCaseProfile,
 	})
-
 }
 
 func CreateUser(c *gin.Context) {
