@@ -3,6 +3,7 @@ package routes
 import (
 	"e-learn/internal/handlers"
 	"e-learn/internal/middleware"
+	adminRoute "e-learn/internal/routes/admin"
 	authRoute "e-learn/internal/routes/auth"
 	courseRoute "e-learn/internal/routes/course"
 	instructorRoute "e-learn/internal/routes/instructor"
@@ -58,6 +59,7 @@ func SetupRouter() *gin.Engine {
 	//r.GET("/course/detail/:slug", handlers.GetCourseDetail)
 
 	instructorRoute.InitRoute(r)
+	adminRoute.InitRoute(r)
 	authRoute.AuthRoute(r)
 	courseRoute.CourseRoute(r)
 	roleRoute.RoleRoutes(r)

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	role "e-learn/internal/constant"
 	"e-learn/internal/fileUpload"
 	"e-learn/internal/models"
 	"e-learn/internal/models/users"
@@ -197,5 +198,39 @@ func UpdateProfilePhoto(c *gin.Context) {
 	//}
 
 	c.JSON(http.StatusCreated, profilePayload)
+
+}
+
+func GetInstructorList(c *gin.Context) {
+
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorization"), nil)
+		return
+	}
+
+	columns := []string{
+		"username",
+		"email",
+		"users.created_at",
+	}
+
+	join := `join users_roles ur on  ur.user_id = users.user_id 
+				join roles r on r.role_id = ur.role_id 
+					where r.slug = $1 
+`
+
+	users, err := users.GetAllBySelect(c, columns, func(rows *sql.Rows, user *users.User) error {
+		return rows.Scan(&user.Username, &user.Email, &user.CreatedAt)
+	}, join, []any{role.Instructor})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": users,
+	})
 
 }

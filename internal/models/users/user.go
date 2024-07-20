@@ -14,9 +14,9 @@ import (
 type User struct {
 	ID               uint64     `json:"id,omitempty"`
 	UserID           string     `json:"user_id,omitempty"`
-	CreatedAt        *time.Time `json:"createAt,omitempty"`
-	UpdatedAt        *time.Time `json:"updateAt,omitempty"`
-	DeletedAt        *time.Time `json:"deleteAt,omitempty"`
+	CreatedAt        *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt        *time.Time `json:"updatedAt,omitempty"`
+	DeletedAt        *time.Time `json:"deletedAt,omitempty"`
 	Username         string     `json:"username,omitempty"`
 	Email            string     `json:"email,omitempty"`
 	Password         string     `json:"password,omitempty"`
@@ -200,4 +200,33 @@ func UpdateProfilePhoto(c *gin.Context, payload *User) (*User, error) {
 	}
 
 	return payload, nil
+}
+
+func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *User) error, where string, values []any) ([]User, error) {
+	table := "users"
+
+	// Build the query string
+	query := fmt.Sprintf("SELECT %s FROM %s %s", strings.Join(columns, ", "), table, where)
+
+	// Execute the query
+	rows, err := database.DB.QueryContext(c, query, values...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var user User
+		if err := scanFunc(rows, &user); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
