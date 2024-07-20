@@ -24,7 +24,7 @@ type Role struct {
 
 type UserRole struct {
 	Email  string `json:"email,omitempty"`
-	UserId uint64 `json:"userId,omitempty"`
+	UserId string `json:"userId,omitempty"`
 	Roles  string `json:"roles,omitempty"`
 }
 
@@ -58,12 +58,12 @@ func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *
 }
 
 func GetUsersRolesMapping(c *gin.Context) ([]UserRole, error) {
-	query := `select u.email, u.id, json_agg(DISTINCT  r.role_id) AS "roles"
+	query := `select u.email, u.user_id, json_agg(DISTINCT  r.role_id) AS "roles"
 		from users u
 				 left join public.users_roles ur
-					  on ur.user_id = u.id
+					  on ur.user_id = u.user_id
 				 left join roles r on ur.role_id = r.role_id
-		group by u.email, u.id`
+		group by u.email, u.user_id`
 
 	rows, err := database.DB.QueryContext(c, query)
 	if err != nil {

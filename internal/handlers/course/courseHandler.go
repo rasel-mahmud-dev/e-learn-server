@@ -8,7 +8,6 @@ import (
 	"e-learn/internal/structType"
 	"e-learn/internal/utils"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -83,19 +82,25 @@ func CreateCourse(c *gin.Context) {
 	}
 
 	createCourseSql := `insert into courses(
-                    course_id,
-                    title,
-                    slug,
-                	thumbnail, 
-                    description, 
-                    publish_date, 
-                    price,
-                    created_at
-                ) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id
-`
+	                   course_id,
+	                   title,
+	                   slug,
+	               	thumbnail,
+	                   description,
+	                   publish_date,
+	                   price,
+	                   created_at
+	               ) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id
+	`
+
+	tx, err := database.DB.BeginTx(c, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	courseId := utils.GenUUID()
-	result, err := database.DB.ExecContext(
+	result, err := tx.ExecContext(
 		c,
 		createCourseSql,
 		courseId,
@@ -108,25 +113,26 @@ func CreateCourse(c *gin.Context) {
 		time.Now(),
 	)
 	if err != nil {
-		fmt.Println(err)
+		_ = tx.Rollback()
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	/*** Create course user mapping ***/
-	result, err = database.DB.ExecContext(c, `
-		insert into authors_courses(
-							course_id,
-							author_id
-							)
-				values ($1, $2) returning id
-				`,
+	result, err = tx.ExecContext(c, `
+			insert into authors_courses(
+								course_id,
+								author_id
+								)
+					values ($1, $2) returning id
+					`,
 		courseId,
 		authUser.UserId,
 	)
 
 	if err != nil {
 		// roll back previous step
+		_ = tx.Rollback()
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -134,45 +140,55 @@ func CreateCourse(c *gin.Context) {
 	/*** Create course category mapping ***/
 
 	if createCoursePayload.CategoryId != 0 {
-		result, err = database.DB.ExecContext(c, `
-		insert into courses_categories(course_id, category_id )values ($1, $2)`,
+		result, err = tx.ExecContext(c, `
+			insert into courses_categories(course_id, category_id )values ($1, $2)`,
 			courseId,
 			createCoursePayload.CategoryId,
 		)
 		if err != nil {
 			// roll back previous step
+			_ = tx.Rollback()
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	}
 
 	if createCoursePayload.SubCategoryId != nil {
-		result, err = database.DB.ExecContext(c, `
-		insert into courses_sub_categories(course_id, category_id )values ($1, $2)`,
+		result, err = tx.ExecContext(c, `
+			insert into courses_sub_categories(course_id, category_id )values ($1, $2)`,
 			courseId,
 			createCoursePayload.SubCategoryId,
 		)
 		if err != nil {
 			// roll back previous step
+			_ = tx.Rollback()
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	}
 
 	if createCoursePayload.TopicId != nil {
-		result, err = database.DB.ExecContext(c, `
-		insert into courses_topics(course_id, topic_id )values ($1, $2)`,
+		result, err = tx.ExecContext(c, `
+			insert into courses_topics(course_id, topic_id )values ($1, $2)`,
 			courseId,
 			createCoursePayload.TopicId,
 		)
 		if err != nil {
 			// roll back previous step
+			_ = tx.Rollback()
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	}
 
-	fmt.Println(result.RowsAffected())
+	_, err = result.RowsAffected()
+	if err != nil {
+		_ = tx.Rollback()
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = tx.Commit()
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data": createCoursePayload,

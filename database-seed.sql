@@ -22,6 +22,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS uni_users_username ON public.users USING btree
 CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON public.users USING btree (deleted_at);
 
 
+DROP TABLE if exists account_status;
+CREATE TABLE IF NOT EXISTS public.account_status
+(
+    id               serial primary key,
+    account_id       uuid not null references users (user_id) on DELETE CASCADE,
+    status           varchar(128),
+    created_at       timestamp with time zone default current_timestamp,
+    updated_at       timestamp with time zone default current_timestamp,
+    is_status_active boolean                  default true,
+    CONSTRAINT unique_account_status_active unique (account_id, status, is_status_active)
+);
+
+-- Create indexes for account_status table
+CREATE UNIQUE INDEX IF NOT EXISTS uni_account_status_account_id ON public.account_status USING btree (account_id);
+
+
 DROP TABLE if exists profiles;
 CREATE TABLE IF NOT EXISTS public.profiles
 (
@@ -180,7 +196,7 @@ DROP table if exists users_roles;
 create table users_roles
 (
     id      serial primary key,
-    user_id int  not null,
+    user_id uuid not null references users (user_id),
     role_id uuid not null references roles (role_id),
     CONSTRAINT unique_user_role unique (user_id, role_id)
 );
@@ -203,11 +219,11 @@ where ac.author_id = 6;
 select u.email, u.id as user_id, json_agg(DISTINCT r.role_id) AS "roles"
 from users u
          left join public.users_roles ur
-              on ur.user_id = u.id
+                   on ur.user_id = u.id
          left join roles r on ur.role_id = r.role_id
 group by u.email, u.id;
 
 
 
-
-
+insert into users_roles(user_id, role_id)
+values ()

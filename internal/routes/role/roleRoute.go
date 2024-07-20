@@ -9,6 +9,6 @@ import (
 func RoleRoutes(r *gin.Engine) {
 	r.POST("/api/v1/roles", middleware.AuthenticateMiddleware, roleHandler.CreateRole)
 	r.GET("/api/v1/roles", middleware.AuthenticateMiddleware, roleHandler.GetRoles)
-	r.GET("/api/v1/roles/users-roles", roleHandler.GetUsersRoles)
-
+	r.GET("/api/v1/roles/users-roles", middleware.AuthenticateMiddleware, roleHandler.GetUsersRoles)
+	r.POST("/api/v1/roles/users-roles/:userId", middleware.AuthenticateMiddleware, roleHandler.SetUserRoles)
 }

@@ -5,6 +5,7 @@ import (
 	"e-learn/internal/middleware"
 	authRoute "e-learn/internal/routes/auth"
 	courseRoute "e-learn/internal/routes/course"
+	instructorRoute "e-learn/internal/routes/instructor"
 	roleRoute "e-learn/internal/routes/role"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -56,6 +57,7 @@ func SetupRouter() *gin.Engine {
 	//
 	//r.GET("/course/detail/:slug", handlers.GetCourseDetail)
 
+	instructorRoute.InitRoute(r)
 	authRoute.AuthRoute(r)
 	courseRoute.CourseRoute(r)
 	roleRoute.RoleRoutes(r)

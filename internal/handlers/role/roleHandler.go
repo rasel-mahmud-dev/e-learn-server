@@ -77,6 +77,43 @@ func GetUsersRoles(c *gin.Context) {
 	})
 }
 
+func SetUserRoles(c *gin.Context) {
+
+	// check auth
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("Unauthorization"), nil)
+		return
+	}
+
+	userId := c.Param("userId")
+
+	var createRolePayload []string
+
+	// Bind JSON or form data
+	if err := c.ShouldBindJSON(&createRolePayload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	for _, roleId := range createRolePayload {
+		_, err := database.DB.ExecContext(
+			c,
+			"insert into users_roles(role_id, user_id ) values ($1, $2) on conflict(role_id, user_id) do nothing",
+			roleId,
+			userId,
+		)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": "Successfully created",
+	})
+}
+
 func CreateRole(c *gin.Context) {
 
 	// check auth
