@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 func GetUsers(c *gin.Context) {
@@ -114,47 +113,6 @@ func GetUsersProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": camelCaseProfile,
 	})
-}
-
-func CreateUser(c *gin.Context) {
-	var newUser users.User
-
-	if err := c.ShouldBindJSON(&newUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	user, err := users.GetUserByEmail(c, []string{"id", "email", "username", "avatar"}, func(row *sql.Row, user *users.User) error {
-		return row.Scan(
-			&user.ID,
-			&user.Email,
-			&user.Username,
-			&user.Avatar,
-		)
-	}, newUser.Email)
-
-	if err != nil {
-		response.ErrorResponse(c, err, nil)
-		return
-	}
-
-	if user != nil {
-		response.ErrorResponse(c, errors.New("users is already registered"), nil)
-		return
-	}
-
-	newUser.RegistrationDate = time.Now()
-
-	result, error := users.CreateUser(c, &newUser)
-	if error != nil {
-		response.ErrorResponse(c, error, map[string]string{
-			"uni_users_email": "User already registered.",
-		})
-		return
-	}
-
-	c.JSON(http.StatusBadRequest, gin.H{"data": result})
-
 }
 
 func UpdateProfile(c *gin.Context) {

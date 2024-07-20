@@ -91,8 +91,7 @@ func CreateCourse(c *gin.Context) {
                     publish_date, 
                     price,
                     created_at
-                    )
-		values ($1, $2, $3, $4, $5, $6, $7, $8) returning id
+                ) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id
 `
 
 	courseId := utils.GenUUID()
@@ -109,6 +108,7 @@ func CreateCourse(c *gin.Context) {
 		time.Now(),
 	)
 	if err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

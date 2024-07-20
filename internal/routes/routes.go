@@ -3,7 +3,9 @@ package routes
 import (
 	"e-learn/internal/handlers"
 	"e-learn/internal/middleware"
+	authRoute "e-learn/internal/routes/auth"
 	courseRoute "e-learn/internal/routes/course"
+	roleRoute "e-learn/internal/routes/role"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -31,7 +33,7 @@ func SetupRouter() *gin.Engine {
 	})
 
 	r.GET("/users", handlers.GetUsers)
-	r.POST("/users", handlers.CreateUser)
+
 	r.GET("/users/profile/:profileId", middleware.AuthenticateMiddleware, handlers.GetUsersProfile)
 
 	r.PATCH("/users/update-profile", middleware.AuthenticateMiddleware, handlers.UpdateProfile)
@@ -54,8 +56,9 @@ func SetupRouter() *gin.Engine {
 	//
 	//r.GET("/course/detail/:slug", handlers.GetCourseDetail)
 
-	AuthRoute(r)
+	authRoute.AuthRoute(r)
 	courseRoute.CourseRoute(r)
+	roleRoute.RoleRoutes(r)
 
 	return r
 }

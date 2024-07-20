@@ -13,14 +13,15 @@ import (
 
 type User struct {
 	ID               uint64     `json:"id,omitempty"`
-	CreatedAt        *time.Time `json:"created_at,omitempty"`
-	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
-	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
+	UserID           string     `json:"user_id,omitempty"`
+	CreatedAt        *time.Time `json:"createAt,omitempty"`
+	UpdatedAt        *time.Time `json:"updateAt,omitempty"`
+	DeletedAt        *time.Time `json:"deleteAt,omitempty"`
 	Username         string     `json:"username,omitempty"`
 	Email            string     `json:"email,omitempty"`
 	Password         string     `json:"password,omitempty"`
-	RegistrationDate time.Time  `json:"registration_date,omitempty"`
-	LastLogin        *time.Time `json:"last_login,omitempty"`
+	RegistrationDate time.Time  `json:"registrationDate,omitempty"`
+	LastLogin        *time.Time `json:"lastLogin,omitempty"`
 	Avatar           *string    `json:"avatar,omitempty"`
 }
 
@@ -138,15 +139,15 @@ func CreateUser(c *gin.Context, payload *User) (*User, error) {
 
 	// Prepare the SQL statement
 	query := `
-		INSERT INTO users (username, email, password, registration_date, avatar) 
-			VALUES ($1, $2, $3, $4, $5) 
+		INSERT INTO users (username, email, user_id, password, registration_date, avatar) 
+			VALUES ($1, $2, $3, $4, $5, $6) 
 		RETURNING id, created_at, updated_at
 `
 	var user User
-	// Execute the SQL statement
 	err := database.DB.QueryRowContext(c, query,
 		payload.Username,
 		payload.Email,
+		payload.UserID,
 		payload.Password,
 		payload.RegistrationDate,
 		payload.Avatar,
