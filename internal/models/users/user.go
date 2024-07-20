@@ -13,7 +13,7 @@ import (
 
 type User struct {
 	ID               uint64     `json:"id,omitempty"`
-	UserID           string     `json:"user_id,omitempty"`
+	UserID           string     `json:"userId,omitempty"`
 	CreatedAt        *time.Time `json:"createdAt,omitempty"`
 	UpdatedAt        *time.Time `json:"updatedAt,omitempty"`
 	DeletedAt        *time.Time `json:"deletedAt,omitempty"`
@@ -23,6 +23,8 @@ type User struct {
 	RegistrationDate time.Time  `json:"registrationDate,omitempty"`
 	LastLogin        *time.Time `json:"lastLogin,omitempty"`
 	Avatar           *string    `json:"avatar,omitempty"`
+
+	AccountStatus *string `json:"accountStatus,omitempty"`
 }
 
 type UserWithCamelCaseJSON struct {

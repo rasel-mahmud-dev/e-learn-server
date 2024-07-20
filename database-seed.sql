@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.account_status
     id               serial primary key,
     account_id       uuid not null references users (user_id) on DELETE CASCADE,
     status           varchar(128),
+    note             varchar(5000),
     created_at       timestamp with time zone default current_timestamp,
     updated_at       timestamp with time zone default current_timestamp,
     is_status_active boolean                  default true,
@@ -35,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.account_status
 );
 
 -- Create indexes for account_status table
-CREATE UNIQUE INDEX IF NOT EXISTS uni_account_status_account_id ON public.account_status USING btree (account_id);
+CREATE INDEX IF NOT EXISTS uni_account_status_account_id ON public.account_status USING btree (account_id);
 
 
 DROP TABLE if exists profiles;
@@ -91,7 +92,7 @@ DROP TABLE IF EXISTS public.courses;
 CREATE TABLE IF NOT EXISTS public.courses
 (
     id           serial primary key not null,
-    course_id    uuid               not null,
+    course_id    uuid unique        not null,
     created_at   timestamp with time zone default current_timestamp,
     updated_at   timestamp with time zone default current_timestamp,
     deleted_at   timestamp with time zone,
@@ -108,21 +109,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_slug ON public.courses USING btree
 CREATE INDEX IF NOT EXISTS idx_courses_deleted_at ON public.courses USING btree (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_courses_course_id ON public.courses USING btree (course_id);
 
--- Create topics table
-CREATE TABLE IF NOT EXISTS public.topics
-(
-    id         serial primary key not null,
-    created_at timestamp with time zone default current_timestamp,
-    updated_at timestamp with time zone default current_timestamp,
-    deleted_at timestamp with time zone,
-    title      text               not null,
-    slug       text               not null
-);
-
--- Create indexes for topics table
-CREATE UNIQUE INDEX IF NOT EXISTS uni_topics_title ON public.topics USING btree (title);
-CREATE UNIQUE INDEX IF NOT EXISTS uni_topics_slug ON public.topics USING btree (slug);
-CREATE INDEX IF NOT EXISTS idx_topics_deleted_at ON public.topics USING btree (deleted_at);
 
 
 DROP TABLE IF EXISTS authors_courses;
@@ -141,34 +127,34 @@ CREATE INDEX IF NOT EXISTS uni_authors_courses_course_id ON public.authors_cours
 create table courses_categories
 (
     id          serial primary key,
-    category_id int  not null,
-    course_id   uuid not null,
+    category_id int  not null references categories (id),
+    course_id   uuid not null references courses (course_id),
     CONSTRAINT unique_category_course unique (category_id, course_id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_categories USING btree (category_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_categories USING btree (course_id);
+CREATE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_categories USING btree (category_id);
+CREATE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_categories USING btree (course_id);
 
 
 create table courses_sub_categories
 (
     id          serial primary key,
-    category_id int  not null,
-    course_id   uuid not null,
+    category_id int  not null references categories (id),
+    course_id   uuid not null references courses (course_id),
     CONSTRAINT unique_sub_category_course unique (category_id, course_id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_sub_categories USING btree (category_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_sub_categories USING btree (course_id);
+CREATE INDEX IF NOT EXISTS uni_courses_sub_categories ON public.courses_sub_categories USING btree (category_id);
+CREATE INDEX IF NOT EXISTS uni_courses_sub_categories ON public.courses_sub_categories USING btree (course_id);
 
 
 create table courses_topics
 (
     id        serial primary key,
-    topic_id  int  not null,
-    course_id uuid not null,
+    topic_id  int  not null references categories (id),
+    course_id uuid not null references courses (course_id),
     CONSTRAINT unique_topic_course unique (topic_id, course_id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_topics USING btree (topic_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_categories ON public.courses_topics USING btree (course_id);
+CREATE INDEX IF NOT EXISTS uni_courses_topics ON public.courses_topics USING btree (topic_id);
+CREATE INDEX IF NOT EXISTS uni_courses_topics ON public.courses_topics USING btree (course_id);
 
 
 DROP table if exists roles;
@@ -225,5 +211,49 @@ group by u.email, u.id;
 
 
 
-insert into users_roles(user_id, role_id)
-values ()
+select users.email,
+       users.user_id,
+
+       (select jsonb_agg(jsonb_build_object(
+               'status', ass.status,
+               'is_status_active', ass.is_status_active)
+               ) AS account_status
+        from account_status ass
+        where ass.account_id = users.user_id
+          AND is_status_active = true)
+
+from users
+         join users_roles ur
+              on users.user_id = ur.user_id
+         join public.roles r
+              on ur.role_id = r.role_id
+where r.slug = 'instructor';
+
+
+
+SELECT courses.id                                                                                                    as id,
+       ac.course_id                                                                                                  as course_id,
+       title,
+       slug,
+       description,
+       thumbnail,
+       price,
+       created_at,
+
+       (select jsonb_agg(DISTINCT cs.category_id)
+        from courses_categories cs
+        where courses.course_id = cs.course_id)                                                                      as categories,
+       (select jsonb_agg(DISTINCT sc.category_id)
+        from courses_sub_categories sc
+        where courses.course_id = sc.course_id)                                                                      as sub_categories,
+       (select jsonb_agg(DISTINCT ct.topic_id)
+        from courses_topics ct
+        where courses.course_id = ct.course_id)                                                                      as topics,
+       (select jsonb_agg(DISTINCT ac.author_id)
+        from authors_courses ac
+        where ac.course_id = courses.course_id)                                                                      as authors
+
+FROM courses
+         join authors_courses ac on courses.course_id = ac.course_id
+where courses.slug = 'quaerat-quidem-non-q'
+

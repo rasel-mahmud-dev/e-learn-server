@@ -3,9 +3,9 @@ package course
 import (
 	"database/sql"
 	"e-learn/internal/database"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-
 	"strings"
 	"time"
 )
@@ -24,11 +24,19 @@ type Course struct {
 
 	PublishDate *time.Time `json:"publishDate,omitempty" `
 
-	Price           float64 ` json:"price" `
-	CategoryList    *string ` json:"categoryList,omitempty" `
-	SubCategoryList *string ` json:"subCategoryList,omitempty" `
-	TopicList       *string ` json:"topicList,omitempty" `
-	AuthorList      *string ` json:"authorList,omitempty" `
+	Price float64 ` json:"price" `
+
+	CategoryListJson *string  ` json:"categoryListJson,omitempty" `
+	CategoryList     *[]int64 ` json:"categoryList,omitempty" `
+
+	SubCategoryListJson *string  ` json:"subCategoryListJson,omitempty" `
+	SubCategoryList     *[]int64 ` json:"subCategoryList,omitempty"`
+
+	TopicListJson *string  ` json:"topicListJson,omitempty" `
+	TopicList     *[]int64 ` json:"topicList,omitempty" `
+
+	AuthorListJson *string  ` json:"authorListJson,omitempty" `
+	AuthorList     *[]int64 ` json:"authorList,omitempty" `
 }
 
 func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *Course) error, where string, values []any) ([]Course, error) {
@@ -59,4 +67,22 @@ func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *
 	}
 
 	return users, nil
+}
+
+func GetOne(c *gin.Context, columns []string, scanFunc func(*sql.Row, *Course) error, where string, values []any) (*Course, error) {
+	query := fmt.Sprintf("SELECT %s FROM courses %s ", strings.Join(columns, ", "), where)
+
+	fmt.Println(query)
+	user := &Course{}
+	row := database.DB.QueryRowContext(c, query, values...)
+
+	err := scanFunc(row, user)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil // No users found
+		}
+		return nil, err
+	}
+
+	return user, nil
 }

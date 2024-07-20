@@ -9,5 +9,6 @@ import (
 func InitRoute(r *gin.Engine) {
 	r.POST("/api/v1/instructor/courses", middleware.AuthenticateMiddleware, courseHandler.CreateCourse)
 	r.GET("/api/v1/instructor/courses", middleware.AuthenticateMiddleware, courseHandler.GetInstructorCourses)
+	r.GET("/api/v1/instructor/courses/:slug", middleware.AuthenticateMiddleware, courseHandler.GetInstructorCourseDetail)
 
 }

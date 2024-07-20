@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	role "e-learn/internal/constant"
+	"e-learn/internal/database"
 	"e-learn/internal/fileUpload"
 	"e-learn/internal/models"
 	"e-learn/internal/models/users"
@@ -210,9 +211,21 @@ func GetInstructorList(c *gin.Context) {
 	}
 
 	columns := []string{
+		"users.user_id",
 		"username",
 		"email",
 		"users.created_at",
+		`(select jsonb_agg(jsonb_build_object(
+			'status', ass.status,
+			'is_status_active', ass.is_status_active,
+			'created_at', ass.created_at,
+			'note', ass.note,
+			'id', ass.id
+			)
+			) AS account_status    
+			from account_status ass 
+			where ass.account_id = users.user_id AND is_status_active = true)
+		`,
 	}
 
 	join := `join users_roles ur on  ur.user_id = users.user_id 
@@ -221,8 +234,11 @@ func GetInstructorList(c *gin.Context) {
 `
 
 	users, err := users.GetAllBySelect(c, columns, func(rows *sql.Rows, user *users.User) error {
-		return rows.Scan(&user.Username, &user.Email, &user.CreatedAt)
-	}, join, []any{role.Instructor})
+		return rows.Scan(&user.UserID, &user.Username, &user.Email, &user.CreatedAt, &user.AccountStatus)
+	},
+		join,
+		[]any{role.Instructor},
+	)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -231,6 +247,33 @@ func GetInstructorList(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data": users,
+	})
+
+}
+
+func UnlockAccount(c *gin.Context) {
+
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorization"), nil)
+		return
+	}
+
+	accountId := c.Param("accountId")
+	statusId := c.Param("statusId")
+	query := "update account_status set is_status_active = false where account_status.account_id = $1 AND account_status.id = $2"
+	_, err := database.DB.ExecContext(c, query, accountId, statusId)
+	if err != nil {
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": "Successfully unlocked account",
 	})
 
 }
