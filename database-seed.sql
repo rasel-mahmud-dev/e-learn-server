@@ -284,3 +284,6 @@ FROM courses
          join authors_courses ac on courses.course_id = ac.course_id
 where courses.slug = 'quaerat-quidem-non-q'
 
+
+SELECT ROUND(SUM(rate) / COUNT(rate)) FROM reviews
+
