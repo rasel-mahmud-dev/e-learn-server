@@ -6,8 +6,10 @@ import (
 	"e-learn/internal/response"
 	"e-learn/internal/utils"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 func CreateCourseReview(c *gin.Context) {
@@ -57,11 +59,15 @@ func CreateCourseReview(c *gin.Context) {
 func GetCourseReviews(c *gin.Context) {
 
 	// check auth
-	authUser := utils.GetAuthUser(c)
-	if authUser == nil {
-		response.ErrorResponse(c, errors.New("unauthorization"), nil)
-		return
-	}
+	//authUser := utils.GetAuthUser(c)
+	//if authUser == nil {
+	//	response.ErrorResponse(c, errors.New("unauthorization"), nil)
+	//	return
+	//}
+
+	orderByQuery := c.Query("orderBy")
+	orderQuery := c.Query("order")
+	pageNumberQuery := c.Query("pageNumber")
 
 	courseId := c.Param("courseId")
 	if courseId == "" {
@@ -69,7 +75,35 @@ func GetCourseReviews(c *gin.Context) {
 		return
 	}
 
-	query := "order by created_at desc limit 10"
+	orderBy := "created_at"
+	if orderByQuery != "" {
+		if orderByQuery == "date" {
+			orderBy = "created_at"
+		} else if orderByQuery == "rating" {
+			orderBy = "rate"
+		}
+	}
+
+	limit := 20
+	order := "desc"
+	if orderQuery != "" {
+		if orderQuery == "1" {
+			order = "desc"
+		} else {
+			orderBy = "asc"
+		}
+	}
+
+	offset := 0
+	if pageNumberQuery != "" {
+		atoi, err := strconv.Atoi(pageNumberQuery)
+		if err != nil {
+			// ignore
+		}
+		offset = limit * (atoi - 1)
+	}
+
+	query := fmt.Sprintf("order by %s %s limit 20 offset %d  ", orderBy, order, offset)
 
 	columns := []string{"title", "summary", "rate", "course_id", "user_id", "created_at"}
 	info, err := review.GetAllBySelect(c, columns, func(rows *sql.Rows, r *review.Review) error {
@@ -81,17 +115,37 @@ func GetCourseReviews(c *gin.Context) {
 		return
 	}
 
-	rateCol := `ROUND(SUM(rate) / COUNT(rate)) as rate`
+	rateInfo := review.Review{}
+	var oneStar, twoStar, threeStar, fourStar, fiveStar int64
 
-	rateInfo, err := review.GetOne(c, []string{rateCol, "count(rate)"}, func(row *sql.Row, r *review.Review) error {
-		return row.Scan(&r.Rate, &r.Total)
-	}, "", nil)
+	if offset == 0 {
+		columns2 := []string{
+			`count(rate)`,
+			`ROUND(SUM(rate) / COUNT(rate)) as rate`,
+			`(select count(rate) from reviews where rate = 1) as one_star`,
+			`(select count(rate) from reviews where rate = 2) as two_star`,
+			`(select count(rate) from reviews where rate = 3) as three_star`,
+			`(select count(rate) from reviews where rate = 4) as four_star`,
+			`(select count(rate) from reviews where rate = 5) as five_sta`,
+		}
+
+		rateInfo_, _ := review.GetOne(c, columns2, func(row *sql.Row, r *review.Review) error {
+			return row.Scan(&r.Total, &r.Rate, &oneStar, &twoStar, &threeStar, &fourStar, &fiveStar)
+		}, "", nil)
+		rateInfo = *rateInfo_
+
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"reviews":   info,
 			"avgRating": rateInfo.Rate,
 			"total":     rateInfo.Total,
+			"1":         oneStar,
+			"2":         twoStar,
+			"3":         threeStar,
+			"4":         fourStar,
+			"5":         fiveStar,
 		},
 	})
 

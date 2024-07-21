@@ -282,8 +282,18 @@ SELECT courses.id                               as id,
 
 FROM courses
          join authors_courses ac on courses.course_id = ac.course_id
-where courses.slug = 'quaerat-quidem-non-q'
+where courses.slug = 'quaerat-quidem-non-q';
 
 
-SELECT ROUND(SUM(rate) / COUNT(rate)) FROM reviews
 
+SELECT
+     ROUND(SUM(rate) / COUNT(rate)) as avg_rate,
+     COUNT(rate) as total,
+    (select count(rate) from reviews where rate = 1) as one_star,
+    (select count(rate) from reviews where rate = 2) as two_star,
+    (select count(rate) from reviews where rate = 3) as three_star,
+    (select count(rate) from reviews where rate = 4) as four_star,
+    (select count(rate) from reviews where rate = 5) as five_star
+FROM reviews group by one_star, two_star;
+
+select * from reviews order by id asc limit 4 offset 0
