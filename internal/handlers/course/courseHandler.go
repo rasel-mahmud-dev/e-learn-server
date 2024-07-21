@@ -31,10 +31,10 @@ func GetInstructorCourses(c *gin.Context) {
 		"thumbnail",
 		"price",
 		"created_at",
-		"(select title from courses_categories c where courses.course_id = c.course_id) as categories",
-		"(select title from courses_sub_categories sc where courses.course_id = sc.course_id) as sub_categories",
-		"(select title from courses_topics ct where courses.course_id = ct.course_id) as topics",
-		"(select id from authors_courses ac where ac.course_id = courses.course_id) as authors",
+		"(select jsonb_agg(DISTINCT cs.category_id) from courses_categories cs where courses.course_id = cs.course_id) as categories",
+		"(select jsonb_agg(DISTINCT sc.category_id) from courses_sub_categories sc where courses.course_id = sc.course_id) as sub_categories",
+		"(select jsonb_agg(DISTINCT ct.topic_id)  from courses_topics ct where courses.course_id = ct.course_id)         as topics",
+		"(select jsonb_agg(DISTINCT ac.author_id) from authors_courses ac where ac.course_id = courses.course_id)           as authors",
 	}
 
 	authJoin := `join authors_courses ac on courses.course_id = ac.course_id where ac.author_id = $1`
@@ -48,10 +48,10 @@ func GetInstructorCourses(c *gin.Context) {
 			&course.Thumbnail,
 			&course.Price,
 			&course.CreatedAt,
-			&course.CategoryList,
-			&course.SubCategoryList,
-			&course.TopicList,
-			&course.AuthorList,
+			&course.CategoryListJson,
+			&course.SubCategoryListJson,
+			&course.TopicListJson,
+			&course.AuthorListJson,
 		)
 	}, authJoin, []any{authUser.UserId})
 

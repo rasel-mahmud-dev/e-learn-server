@@ -191,6 +191,31 @@ CREATE INDEX IF NOT EXISTS uni_users_roles_user_id ON public.users_roles USING b
 CREATE INDEX IF NOT EXISTS uni_users_roles_role_id ON public.users_roles USING btree (role_id);
 
 
+/*Rating & Review */
+/*rate: number,
+title: string,
+summary: string,
+images: []
+username: string,
+createdAt: string
+avatar: string
+*/
+create table reviews
+(
+    id         serial primary key,
+    title      varchar(512),
+    summary    varchar(10000),
+    user_id    uuid not null references users (user_id),
+    course_id  uuid not null references courses (course_id),
+    created_at timestamptz default current_timestamp,
+    deleted_at timestamptz default null
+);
+
+CREATE INDEX IF NOT EXISTS i_reviews_user_id ON public.reviews USING btree (user_id);
+CREATE INDEX IF NOT EXISTS i_reviews_course_id ON public.reviews USING btree (course_id);
+CREATE INDEX IF NOT EXISTS i_reviews_deleted_at ON public.reviews USING btree (deleted_at);
+
+
 
 select courses.*,
        (select title from courses_categories c where courses.course_id = c.course_id)       as categories,
@@ -231,8 +256,8 @@ where r.slug = 'instructor';
 
 
 
-SELECT courses.id                                                                                                    as id,
-       ac.course_id                                                                                                  as course_id,
+SELECT courses.id                               as id,
+       ac.course_id                             as course_id,
        title,
        slug,
        description,
@@ -242,16 +267,16 @@ SELECT courses.id                                                               
 
        (select jsonb_agg(DISTINCT cs.category_id)
         from courses_categories cs
-        where courses.course_id = cs.course_id)                                                                      as categories,
+        where courses.course_id = cs.course_id) as categories,
        (select jsonb_agg(DISTINCT sc.category_id)
         from courses_sub_categories sc
-        where courses.course_id = sc.course_id)                                                                      as sub_categories,
+        where courses.course_id = sc.course_id) as sub_categories,
        (select jsonb_agg(DISTINCT ct.topic_id)
         from courses_topics ct
-        where courses.course_id = ct.course_id)                                                                      as topics,
+        where courses.course_id = ct.course_id) as topics,
        (select jsonb_agg(DISTINCT ac.author_id)
         from authors_courses ac
-        where ac.course_id = courses.course_id)                                                                      as authors
+        where ac.course_id = courses.course_id) as authors
 
 FROM courses
          join authors_courses ac on courses.course_id = ac.course_id
