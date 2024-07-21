@@ -107,7 +107,7 @@ func GetUsersProfile(c *gin.Context) {
 
 	camelCaseProfile.Profile.AboutMe = nil
 	camelCaseProfile.Profile.UpdatedAt = nil
-	camelCaseProfile.Profile.UserId = 0
+	camelCaseProfile.Profile.UserId = ""
 	camelCaseProfile.Profile.FirstName = nil
 	camelCaseProfile.Profile.LastName = nil
 	camelCaseProfile.Profile.CreatedAt = nil
@@ -185,7 +185,7 @@ func UpdateProfilePhoto(c *gin.Context) {
 	}
 
 	var profilePayload users.User
-	profilePayload.ID = authUser.UserId
+	profilePayload.UserID = authUser.UserId
 	profilePayload.Avatar = utils.StringPtr(uploadResult.SecureURL)
 
 	_, err = users.UpdateProfilePhoto(c, &profilePayload)

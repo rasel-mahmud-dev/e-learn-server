@@ -25,7 +25,7 @@ type Profile struct {
 	YouTube   *string    `json:"youtube,omitempty"`
 	Github    *string    `json:"github,omitempty"`
 	AboutMe   *string    `json:"about_me,omitempty"`
-	UserId    uint64     `json:"user_id,omitempty"`
+	UserId    string     `json:"user_id,omitempty"`
 }
 
 type ProfileWithCamelCaseJSON struct {
@@ -36,7 +36,7 @@ type ProfileWithCamelCaseJSON struct {
 	FirstName *string    `json:"firstName,omitempty"`
 	LastName  *string    `json:"lastName,omitempty"`
 	AboutMe   *string    `json:"aboutMe,omitempty"`
-	UserId    uint64     `json:"userId,omitempty"`
+	UserId    string     `json:"userId,omitempty"`
 }
 
 func GetProfileById(c *gin.Context, columns []string, scanFunc func(*sql.Row, *Profile) error, userId uint64) (*Profile, error) {
@@ -84,6 +84,7 @@ func UpdateProfile(c *gin.Context, request *Profile) (*Profile, error) {
 		insertFields = append(insertFields, "deleted_at")
 		insertPlaceholders = append(insertPlaceholders, fmt.Sprintf("$%d", valueIndex))
 		values = append(values, request.DeletedAt)
+
 		valueIndex++
 	}
 	if request.CreatedAt != nil {
@@ -170,7 +171,7 @@ func UpdateProfile(c *gin.Context, request *Profile) (*Profile, error) {
 		values = append(values, request.AboutMe)
 		valueIndex++
 	}
-	if request.UserId != 0 {
+	if request.UserId != "" {
 		updates = append(updates, fmt.Sprintf("user_id = $%d", valueIndex))
 		insertFields = append(insertFields, "user_id")
 		insertPlaceholders = append(insertPlaceholders, fmt.Sprintf("$%d", valueIndex))
@@ -185,14 +186,15 @@ func UpdateProfile(c *gin.Context, request *Profile) (*Profile, error) {
 		}
 
 		// Build the SQL update statement
-		query := fmt.Sprintf("UPDATE profiles SET %s WHERE id = $%d", strings.Join(updates, ", "), valueIndex)
+		query := fmt.Sprintf("UPDATE profiles SET %s WHERE user_id = $%d", strings.Join(updates, ", "), valueIndex)
 
-		values = append(values, profileId) // Update the existing profile
+		values = append(values, request.UserId) // Update the existing profile
 		_, err = database.DB.ExecContext(c, query, values...)
 		if err != nil {
 			return nil, err
 		}
 	} else {
+
 		// Build the SQL insert statement
 		query := fmt.Sprintf(
 			"INSERT INTO profiles (%s) VALUES (%s) RETURNING id",

@@ -42,7 +42,7 @@ func (User) TableName() string {
 	return "users"
 }
 
-func GetLoggedUserInfo(c *gin.Context, userId uint64) (*User, error) {
+func GetLoggedUserInfo(c *gin.Context, userId string) (*User, error) {
 
 	payloadAuthInfo, err := GetUserById(c, []string{"id", "username", "email", "avatar"}, func(row *sql.Row, user *User) error {
 		return row.Scan(
@@ -115,17 +115,13 @@ func GetUserByEmail(c *gin.Context, columns []string, scanFunc func(*sql.Row, *U
 	return user, nil
 }
 
-func GetUserById(c *gin.Context, columns []string, scanFunc func(*sql.Row, *User) error, userId uint64) (*User, error) {
-	// Build the query string
-	query := fmt.Sprintf("SELECT %s FROM users WHERE id = $1", strings.Join(columns, ", "))
+func GetUserById(c *gin.Context, columns []string, scanFunc func(*sql.Row, *User) error, userId string) (*User, error) {
+	query := fmt.Sprintf("SELECT %s FROM users WHERE user_id = $1", strings.Join(columns, ", "))
 
-	// Prepare a variable to hold the users data
 	user := &User{}
 
-	// Execute the query
 	row := database.DB.QueryRowContext(c, query, userId)
 
-	// Use the scan function to populate the users struct
 	err := scanFunc(row, user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

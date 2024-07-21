@@ -115,13 +115,12 @@ DROP TABLE IF EXISTS authors_courses;
 create table authors_courses
 (
     id        serial primary key,
-    author_id int  not null,
+    author_id uuid  not null references users(user_id),
     course_id uuid not null references courses (course_id) on DELETE CASCADE,
     CONSTRAINT unique_author_course unique (author_id, course_id)
 );
 CREATE INDEX IF NOT EXISTS uni_authors_courses_author_id ON public.authors_courses USING btree (author_id);
 CREATE INDEX IF NOT EXISTS uni_authors_courses_course_id ON public.authors_courses USING btree (course_id);
-
 
 
 create table courses_categories
@@ -200,11 +199,14 @@ username: string,
 createdAt: string
 avatar: string
 */
+
+DROP TABLE IF EXISTS reviews;
 create table reviews
 (
     id         serial primary key,
     title      varchar(512),
     summary    varchar(10000),
+    rate       int8,
     user_id    uuid not null references users (user_id),
     course_id  uuid not null references courses (course_id),
     created_at timestamptz default current_timestamp,

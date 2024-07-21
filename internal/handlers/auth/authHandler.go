@@ -6,6 +6,7 @@ import (
 	"e-learn/internal/response"
 	"e-learn/internal/utils"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -24,15 +25,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	user, err := users.GetUserByEmail(c, []string{"id", "email", "password", "username", "avatar"}, func(row *sql.Row, user *users.User) error {
+	user, err := users.GetUserByEmail(c, []string{"user_id", "email", "password", "username", "avatar"}, func(row *sql.Row, user *users.User) error {
 		return row.Scan(
-			&user.ID,
+			&user.UserID,
 			&user.Email,
 			&user.Password,
 			&user.Username,
 			&user.Avatar,
 		)
 	}, newUser.Email)
+
+	fmt.Println(user)
 
 	if err != nil {
 		response.ErrorResponse(c, err, nil)
@@ -43,6 +46,7 @@ func Login(c *gin.Context) {
 		response.ErrorResponse(c, err, map[string]string{
 			"no rows": "User not registered.",
 		})
+		return
 	}
 
 	if user.Password != newUser.Password {
@@ -52,12 +56,13 @@ func Login(c *gin.Context) {
 
 	tokenString, err := utils.CreateToken(utils.JwtPayload{
 		Email:  user.Email,
-		UserId: user.ID,
+		UserId: user.UserID,
 	})
 
-	payloadAuthInfo, err := users.GetLoggedUserInfo(c, user.ID)
+	payloadAuthInfo, err := users.GetLoggedUserInfo(c, user.UserID)
 	if payloadAuthInfo == nil {
 		response.ErrorResponse(c, err, nil)
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": tokenString, "auth": payloadAuthInfo})
 }
