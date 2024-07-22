@@ -59,11 +59,11 @@ func CreateCourseReview(c *gin.Context) {
 func GetCourseReviews(c *gin.Context) {
 
 	// check auth
-	//authUser := utils.GetAuthUser(c)
-	//if authUser == nil {
-	//	response.ErrorResponse(c, errors.New("unauthorization"), nil)
-	//	return
-	//}
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorization"), nil)
+		return
+	}
 
 	orderByQuery := c.Query("orderBy")
 	orderQuery := c.Query("order")
@@ -71,7 +71,7 @@ func GetCourseReviews(c *gin.Context) {
 
 	courseId := c.Param("courseId")
 	if courseId == "" {
-		response.ErrorResponse(c, errors.New("Missing course id."), nil)
+		response.ErrorResponse(c, errors.New("missing course id"), nil)
 		return
 	}
 
@@ -103,12 +103,12 @@ func GetCourseReviews(c *gin.Context) {
 		offset = limit * (atoi - 1)
 	}
 
-	query := fmt.Sprintf("order by %s %s limit 20 offset %d  ", orderBy, order, offset)
+	query := fmt.Sprintf("join users u on u.user_id = reviews.user_id where course_id = $1 order by %s %s limit 20 offset %d", orderBy, order, offset)
 
-	columns := []string{"title", "summary", "rate", "course_id", "user_id", "created_at"}
+	columns := []string{"title", "summary", "rate", "course_id", "reviews.user_id", "username", "avatar", "reviews.created_at"}
 	info, err := review.GetAllBySelect(c, columns, func(rows *sql.Rows, r *review.Review) error {
-		return rows.Scan(&r.Title, &r.Summary, &r.Rate, &r.CourseID, &r.UserID, &r.CreatedAt)
-	}, query, nil)
+		return rows.Scan(&r.Title, &r.Summary, &r.Rate, &r.CourseID, &r.UserID, &r.Username, &r.Avatar, &r.CreatedAt)
+	}, query, []any{courseId})
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New("Something were wrong.")})
@@ -120,18 +120,24 @@ func GetCourseReviews(c *gin.Context) {
 
 	if offset == 0 {
 		columns2 := []string{
-			`count(rate)`,
-			`ROUND(SUM(rate) / COUNT(rate)) as rate`,
-			`(select count(rate) from reviews where rate = 1) as one_star`,
-			`(select count(rate) from reviews where rate = 2) as two_star`,
-			`(select count(rate) from reviews where rate = 3) as three_star`,
-			`(select count(rate) from reviews where rate = 4) as four_star`,
-			`(select count(rate) from reviews where rate = 5) as five_sta`,
+			`count(id)`,
+			`ROUND(SUM(rate) / COUNT(id)) as rate`,
+			`(select count(rate) from reviews where rate = 1 AND course_id = $1) as one_star`,
+			`(select count(rate) from reviews where rate = 2 AND course_id = $1) as two_star`,
+			`(select count(rate) from reviews where rate = 3 AND course_id = $1) as three_star`,
+			`(select count(rate) from reviews where rate = 4 AND course_id = $1) as four_star`,
+			`(select count(rate) from reviews where rate = 5 AND course_id = $1) as five_sta`,
 		}
 
-		rateInfo_, _ := review.GetOne(c, columns2, func(row *sql.Row, r *review.Review) error {
+		rateInfo_, err := review.GetOne(c, columns2, func(row *sql.Row, r *review.Review) error {
 			return row.Scan(&r.Total, &r.Rate, &oneStar, &twoStar, &threeStar, &fourStar, &fiveStar)
-		}, "", nil)
+		}, "where course_id = $1", []any{courseId})
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
 		rateInfo = *rateInfo_
 
 	}

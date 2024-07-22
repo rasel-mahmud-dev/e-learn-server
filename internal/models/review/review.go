@@ -15,10 +15,14 @@ type Review struct {
 	Summary   *string `json:"summary,omitempty"`
 	UserID    string  `json:"userId,omitempty"`
 	CourseID  string  `json:"courseId,omitempty"`
-	Rate      int8    `json:"rate,omitempty"`
-	Total     int64   `json:"total,omitempty"`
+	Rate      *int8   `json:"rate,omitempty"`
+	Total     *int64  `json:"total,omitempty"`
 	CreatedAt string  `json:"createdAt,omitempty"`
 	DeletedAt *string `json:"deletedAt,omitempty"`
+
+	// populated field
+	Username *string `json:"username,omitempty"`
+	Avatar   *string `json:"avatar,omitempty"`
 }
 
 func InsertOne(c *gin.Context, payload *Review) (*int64, error) {

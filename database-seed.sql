@@ -296,4 +296,61 @@ SELECT
     (select count(rate) from reviews where rate = 5) as five_star
 FROM reviews group by one_star, two_star;
 
-select * from reviews order by id asc limit 4 offset 0
+select * from reviews order by id asc limit 4 offset 0;
+
+/*--- search products ----*/
+
+
+select * from courses where title ilike '%eius%'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+create table search_keyword(
+    id serial primary key ,
+    keyword varchar,
+    rank double precision
+);
+
+insert into search_keyword (keyword, rank)
+values ('java', 0.1);
+
+update search_keyword set rank = 0.3 where keyword = 'java';
+update search_keyword set rank = 0.2 where keyword = 'python'
+
+
+SELECT title, summary, rate, course_id, reviews.user_id, username, avatar,
+       reviews.created_at FROM reviews join users u on u.user_id = reviews.user_id where course_id = '1c8f4a5f-5c07-4c6b-8dd4-f9d882f1e232'  limit 1
+
+--
+-- SELECT count(id), ROUND(SUM(rate) / COUNT(id)) as rate,
+--        (select count(rate) from reviews where rate = 1 where course_id = $1) as one_star,
+--        (select count(rate) from reviews where rate = 2 where course_id = $1) as two_star,
+--        (select count(rate) from reviews where rate = 3 where course_id = $1) as three_star,
+--        (select count(rate) from reviews where rate = 4 where course_id = $1) as four_star,
+--        (select count(rate) from reviews where rate = 5 where course_id = $1) as five_sta
+-- FROM reviews where course_id = '69d55bef-668f-4e6d-b59f-635d88d2ef33'
+--                                                                                                                                                                                                                                                                                                                                                                                 where course_id = $1
