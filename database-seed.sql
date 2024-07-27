@@ -115,7 +115,7 @@ DROP TABLE IF EXISTS authors_courses;
 create table authors_courses
 (
     id        serial primary key,
-    author_id uuid  not null references users(user_id),
+    author_id uuid not null references users (user_id),
     course_id uuid not null references courses (course_id) on DELETE CASCADE,
     CONSTRAINT unique_author_course unique (author_id, course_id)
 );
@@ -286,64 +286,60 @@ where courses.slug = 'quaerat-quidem-non-q';
 
 
 
-SELECT
-     ROUND(SUM(rate) / COUNT(rate)) as avg_rate,
-     COUNT(rate) as total,
-    (select count(rate) from reviews where rate = 1) as one_star,
-    (select count(rate) from reviews where rate = 2) as two_star,
-    (select count(rate) from reviews where rate = 3) as three_star,
-    (select count(rate) from reviews where rate = 4) as four_star,
-    (select count(rate) from reviews where rate = 5) as five_star
-FROM reviews group by one_star, two_star;
+SELECT ROUND(SUM(rate) / COUNT(rate))                   as avg_rate,
+       COUNT(rate)                                      as total,
+       (select count(rate) from reviews where rate = 1) as one_star,
+       (select count(rate) from reviews where rate = 2) as two_star,
+       (select count(rate) from reviews where rate = 3) as three_star,
+       (select count(rate) from reviews where rate = 4) as four_star,
+       (select count(rate) from reviews where rate = 5) as five_star
+FROM reviews
+group by one_star, two_star;
 
-select * from reviews order by id asc limit 4 offset 0;
+select *
+from reviews
+order by id asc
+limit 4 offset 0;
 
 /*--- search products ----*/
 
 
-select * from courses where title ilike '%eius%'
+select *
+from courses
+where title ilike '%eius%'
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-create table search_keyword(
-    id serial primary key ,
+create table search_keyword
+(
+    id      serial primary key,
     keyword varchar,
-    rank double precision
+    rank    double precision
 );
 
 insert into search_keyword (keyword, rank)
 values ('java', 0.1);
 
-update search_keyword set rank = 0.3 where keyword = 'java';
-update search_keyword set rank = 0.2 where keyword = 'python'
+update search_keyword
+set rank = 0.3
+where keyword = 'java';
+update search_keyword
+set rank = 0.2
+where keyword = 'python'
 
 
-SELECT title, summary, rate, course_id, reviews.user_id, username, avatar,
-       reviews.created_at FROM reviews join users u on u.user_id = reviews.user_id where course_id = '1c8f4a5f-5c07-4c6b-8dd4-f9d882f1e232'  limit 1
+SELECT title,
+       summary,
+       rate,
+       course_id,
+       reviews.user_id,
+       username,
+       avatar,
+       reviews.created_at
+FROM reviews
+         join users u on u.user_id = reviews.user_id
+where course_id = '1c8f4a5f-5c07-4c6b-8dd4-f9d882f1e232'
+limit 1;
 
 --
 -- SELECT count(id), ROUND(SUM(rate) / COUNT(id)) as rate,
@@ -352,5 +348,50 @@ SELECT title, summary, rate, course_id, reviews.user_id, username, avatar,
 --        (select count(rate) from reviews where rate = 3 where course_id = $1) as three_star,
 --        (select count(rate) from reviews where rate = 4 where course_id = $1) as four_star,
 --        (select count(rate) from reviews where rate = 5 where course_id = $1) as five_sta
--- FROM reviews where course_id = '69d55bef-668f-4e6d-b59f-635d88d2ef33'
---                                                                                                                                                                                                                                                                                                                                                                                 where course_id = $1
+-- FROM reviews where course_id = '69d55bef-668f-4e6d-b59f-635d88d2ef33'  where course_id = $1
+
+
+-- Table to define types of keywords (e.g., product, brand)
+CREATE TABLE keyword_types
+(
+    type_id   SERIAL PRIMARY KEY,
+    type_name VARCHAR(50) NOT NULL
+);
+
+-- Keywords table with type information
+CREATE TABLE keywords
+(
+    keyword_id SERIAL PRIMARY KEY,
+    keyword    VARCHAR(255) NOT NULL UNIQUE,
+    type_id    INT REFERENCES keyword_types (type_id)
+);
+
+-- Table for keyword synonyms
+DROP TABLE keyword_synonyms;
+CREATE TABLE keyword_synonyms
+(
+--     id SERIAL PRIMARY KEY,
+    keyword_id INT REFERENCES keywords (keyword_id),
+    synonym    VARCHAR(255),
+    PRIMARY KEY (keyword_id, synonym)
+);
+
+
+-- Table to define types of preferences
+CREATE TABLE preference_types
+(
+    type_id   SERIAL PRIMARY KEY,
+    type_name VARCHAR(50) NOT NULL
+);
+
+-- Enhanced customer keyword metadata table
+CREATE TABLE customer_keyword_metadata
+(
+    user_id      UUID REFERENCES users (user_id) ON DELETE CASCADE,
+    keyword_id       INT REFERENCES keywords (keyword_id) ON DELETE CASCADE,
+    type_id          INT REFERENCES preference_types (type_id),
+    rank             DOUBLE PRECISION DEFAULT 0.0,
+    preference_score DOUBLE PRECISION DEFAULT 0.0,
+    created_at       timestamptz        DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, keyword_id, type_id)
+);
