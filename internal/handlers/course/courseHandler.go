@@ -265,3 +265,214 @@ func CreateCourse(c *gin.Context) {
 		"data": createCoursePayload,
 	})
 }
+
+func SearchCourse(c *gin.Context) {
+	type SearchCoursePayload struct {
+		Value string `json:"value"`
+	}
+
+	// Check auth
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorization"), nil)
+		return
+	}
+
+	var searchCoursePayload SearchCoursePayload
+	err := c.ShouldBindJSON(&searchCoursePayload)
+	if err != nil {
+		response.ErrorResponse(c, errors.New("Body data missing."), nil)
+		return
+	}
+
+	// Start transaction
+	tx, err := database.DB.BeginTx(c, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var keywordID int
+	err = tx.QueryRowContext(
+		c,
+		"SELECT keyword_id FROM keywords WHERE keyword = $1",
+		searchCoursePayload.Value,
+	).Scan(&keywordID)
+
+	if err == sql.ErrNoRows {
+		// Keyword does not exist, insert it
+		err = tx.QueryRowContext(
+			c,
+			"INSERT INTO keywords(keyword, type_id) VALUES ($1, $2) RETURNING keyword_id",
+			searchCoursePayload.Value,
+			1,
+		).Scan(&keywordID)
+
+		if err != nil {
+			_ = tx.Rollback()
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	} else if err != nil {
+		_ = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var currentRank, currentPreferenceScore float64
+	err = tx.QueryRowContext(
+		c,
+		`SELECT rank, preference_score FROM customer_keyword_metadata 
+		 WHERE user_id = $1 AND keyword_id = $2 AND type_id = $3`,
+		authUser.UserId,
+		keywordID,
+		1,
+	).Scan(&currentRank, &currentPreferenceScore)
+
+	if err != nil && err != sql.ErrNoRows {
+		_ = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Calculate new values
+	newRank := currentRank + 1
+	newPreferenceScore := currentPreferenceScore + 1
+
+	if err == sql.ErrNoRows {
+		// Insert new record
+		_, err = tx.ExecContext(
+			c,
+			`INSERT INTO customer_keyword_metadata
+					(user_id, keyword_id, type_id, rank, preference_score, created_at) 
+				VALUES ($1, $2, $3, $4, $5, $6)`,
+			authUser.UserId,
+			keywordID,
+			1,
+			newRank,            // New calculated rank
+			newPreferenceScore, // New calculated preference score
+			time.Now(),         // Created at
+		)
+	} else {
+		// Update existing record
+		_, err = tx.ExecContext(
+			c,
+			`UPDATE customer_keyword_metadata 
+				SET rank = $4, preference_score = $5, created_at = $6 
+				WHERE user_id = $1 AND keyword_id = $2 AND type_id = $3`,
+			authUser.UserId,
+			keywordID,
+			1,
+			newRank,            // New calculated rank
+			newPreferenceScore, // New calculated preference score
+			time.Now(),         // Updated at
+		)
+	}
+
+	if err != nil {
+		_ = tx.Rollback()
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": "Keyword and user preference successfully recorded",
+	})
+}
+
+func GetUserSearchSuggestions(c *gin.Context) {
+	type SearchSuggestionPayload struct {
+		Query string `json:"query"`
+	}
+
+	var payload SearchSuggestionPayload
+	err := c.ShouldBindJSON(&payload)
+	if err != nil {
+		response.ErrorResponse(c, errors.New("Body data missing."), nil)
+		return
+	}
+
+	// Check auth
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorized"), nil)
+		return
+	}
+
+	// Fetch user-specific suggestions from the database
+	query := `%` + payload.Query + `%`
+	rows, err := database.DB.QueryContext(
+		c,
+		`SELECT k.keyword FROM keywords k  where k.keyword LIKE $1`,
+		query,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var suggestions []string
+	for rows.Next() {
+		var keyword string
+		if err := rows.Scan(&keyword); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		suggestions = append(suggestions, keyword)
+	}
+
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"suggestions": suggestions,
+	})
+}
+
+func ClearUserSearch(c *gin.Context) {
+	type ClearSearchPayload struct {
+		Keyword string `json:"keyword"`
+	}
+
+	var payload ClearSearchPayload
+	err := c.ShouldBindJSON(&payload)
+	if err != nil {
+		response.ErrorResponse(c, errors.New("Body data missing."), nil)
+		return
+	}
+
+	// Check auth
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("unauthorized"), nil)
+		return
+	}
+
+	// Update the is_cleared field in customer_keyword_metadata
+	_, err = database.DB.ExecContext(
+		c,
+		`UPDATE customer_keyword_metadata ckm
+		 SET is_cleared = TRUE
+		 FROM keywords k
+		 WHERE ckm.keyword_id = k.keyword_id AND ckm.user_id = $1 AND k.keyword = $2`,
+		authUser.UserId,
+		payload.Keyword,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Search cleared successfully",
+	})
+}

@@ -31,7 +31,10 @@ func SetupRouter() *gin.Engine {
 	}))
 
 	r.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pon2g2 sedf")
+		c.JSON(http.StatusOK, gin.H{"message": "pong",
+			"ClientIp": c.ClientIP(),
+			"RemoteIp": c.RemoteIP(),
+		})
 	})
 
 	r.GET("/users", handlers.GetUsers)

@@ -393,5 +393,8 @@ CREATE TABLE customer_keyword_metadata
     rank             DOUBLE PRECISION DEFAULT 0.0,
     preference_score DOUBLE PRECISION DEFAULT 0.0,
     created_at       timestamptz        DEFAULT CURRENT_TIMESTAMP,
+    is_cleared BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (user_id, keyword_id, type_id)
 );
+
+ALTER TABLE customer_keyword_metadata ADD COLUMN is_cleared BOOLEAN DEFAULT FALSE;
