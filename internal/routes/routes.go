@@ -53,7 +53,9 @@ func SetupRouter() *gin.Engine {
 	r.GET("/categories", handlers.GetCategories)
 
 	r.POST("/topics", handlers.CreateTopics)
+	r.GET("/topics/one", handlers.GetTopic)
 	r.GET("/topics", handlers.GetTopics)
+	r.PATCH("/topics/:slug", handlers.UpdateTopic)
 
 	//r.POST("/course", handlers.CreateCourse)
 	//r.POST("/course/batch", handlers.CreateCourseBatch)

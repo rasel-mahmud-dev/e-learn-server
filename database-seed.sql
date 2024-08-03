@@ -387,14 +387,36 @@ CREATE TABLE preference_types
 -- Enhanced customer keyword metadata table
 CREATE TABLE customer_keyword_metadata
 (
-    user_id      UUID REFERENCES users (user_id) ON DELETE CASCADE,
+    user_id          UUID REFERENCES users (user_id) ON DELETE CASCADE,
     keyword_id       INT REFERENCES keywords (keyword_id) ON DELETE CASCADE,
     type_id          INT REFERENCES preference_types (type_id),
     rank             DOUBLE PRECISION DEFAULT 0.0,
     preference_score DOUBLE PRECISION DEFAULT 0.0,
-    created_at       timestamptz        DEFAULT CURRENT_TIMESTAMP,
-    is_cleared BOOLEAN DEFAULT FALSE,
+    created_at       timestamptz      DEFAULT CURRENT_TIMESTAMP,
+    is_cleared       BOOLEAN          DEFAULT FALSE,
     PRIMARY KEY (user_id, keyword_id, type_id)
 );
 
-ALTER TABLE customer_keyword_metadata ADD COLUMN is_cleared BOOLEAN DEFAULT FALSE;
+ALTER TABLE customer_keyword_metadata
+    ADD COLUMN is_cleared BOOLEAN DEFAULT FALSE;
+
+
+-- Topic_Subcategories Join Table
+CREATE TABLE public.topic_subcategories
+(
+    sub_category_id int NOT NULL,
+    topic_id        int NOT NULL,
+    PRIMARY KEY (sub_category_id, topic_id),
+    FOREIGN KEY (sub_category_id) REFERENCES public.categories (id) ON DELETE CASCADE,
+    FOREIGN KEY (topic_id) REFERENCES public.categories (id) ON DELETE CASCADE
+);
+
+-- Subcategory_categories Join Table
+CREATE TABLE public.subcategory_categories
+(
+    category_id     int NOT NULL,
+    sub_category_id int NOT NULL,
+    PRIMARY KEY (sub_category_id, category_id),
+    FOREIGN KEY (category_id) REFERENCES public.categories (id) ON DELETE CASCADE,
+    FOREIGN KEY (sub_category_id) REFERENCES public.categories (id) ON DELETE CASCADE
+);
