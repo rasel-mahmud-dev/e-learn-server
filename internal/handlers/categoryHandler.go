@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"e-learn/internal/database"
 	"e-learn/internal/models/category"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -128,21 +130,40 @@ func GetTopic(c *gin.Context) {
 		return
 	}
 
-	columns := []string{"id", "title", "slug", "description", "image"}
+	columns := []string{
+		"id",
+		"title",
+		"slug",
+		"(select JSON_AGG(sub_category_id::text) from topic_subcategories as sub_category_ids where topic_id = categories.id)",
+	}
 
 	var err error
 	var bySlug *category.CategoryWithCamelCaseJSON
 	if slug != "" {
-		bySlug, err = category.GetOne(c, columns, func(row *sql.Row, json *category.CategoryWithCamelCaseJSON) error {
-			return row.Scan(&json.ID, &json.Title, &json.Slug, &json.Image, &json.Description)
+		bySlug, err = category.GetOne(c, columns, func(row *sql.Row, data *category.CategoryWithCamelCaseJSON) error {
+			var subCategoryIds []byte
+
+			row.Scan(&data.ID, &data.Title, &data.Slug, &subCategoryIds)
+
+			if len(subCategoryIds) == 0 {
+				data.SubCategoryIds = nil
+			} else {
+				if err := json.Unmarshal(subCategoryIds, &data.SubCategoryIds); err != nil {
+					return err
+				}
+			}
+			return nil
+
 		}, "where slug = $1 AND type = $2", []any{slug, "topic"})
 		if err != nil {
+			fmt.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
 			return
 		}
+
 	} else {
 		bySlug, err = category.GetOne(c, columns, func(row *sql.Row, json *category.CategoryWithCamelCaseJSON) error {
-			return row.Scan(&json.ID, &json.Title, &json.Slug, &json.Image, &json.Description)
+			return row.Scan(&json.ID, &json.Title, &json.Slug, &json.Image, &json.Description, &json.SubCategoryIds)
 		}, "where id = $1 AND type = $2", []any{id, "topic"})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
@@ -233,71 +254,83 @@ func UpdateTopic(c *gin.Context) {
 	})
 }
 
-//func UpdateSubCategory(c *gin.Context) {
-//
-//	id := c.Param("id")
-//
-//	if id == "" {
-//		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
-//		return
-//	}
-//
-//	//var err error
-//	var bySlug *category.SubCategoryWithCamelCaseJSON
-//
-//	c.JSON(http.StatusOK, gin.H{
-//		"data": bySlug,
-//	})
-//}
+func UpdateSubCategory(c *gin.Context) {
+	slug := c.Param("slug")
+	if slug == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
+		return
+	}
 
-//func GetTopics(c *gin.Context) {
-//
-//	var users []models.Topics
-//	result := database.DB.Find(&users)
-//	if result.Error != nil {
-//		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-//		return
-//	}
-//
-//	var response []models.Topics
-//	for _, user := range users {
-//		response = append(response, models.Topics{
-//			ID:    user.ID,
-//			Title: user.Title,
-//			Slug:  user.Slug,
-//		})
-//	}
-//
-//	c.JSON(http.StatusOK, response)
-//
-//}
-//
-//func CreateSubCategories(c *gin.Context) {
-//	var titles []string
-//
-//	// Bind JSON or form data
-//	if err := c.ShouldBindJSON(&titles); err != nil {
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	var subcategories []models.SubCategory
-//	for i := range titles {
-//		title := titles[i]
-//		subcategories = append(subcategories, models.SubCategory{
-//			Title: title,
-//			Slug:  utils.Slugify(title),
-//		})
-//	}
-//
-//	// Batch insert subcategories
-//	if err := database.DB.Create(&subcategories).Error; err != nil {
-//		panic(err)
-//	}
-//
-//	c.JSON(http.StatusCreated, subcategories)
-//
-//}
+	payload := struct {
+		Title          string   `json:"title"`
+		SubCategoryIds []string `json:"subCategories"`
+	}{}
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	tx, err := database.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction."})
+		return
+	}
+
+	var topicID int
+	err = tx.QueryRow("SELECT id FROM categories WHERE slug = $1 AND type = 'topic'", slug).Scan(&topicID)
+	if err != nil {
+		tx.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Topic not found."})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch topic."})
+		}
+		return
+	}
+
+	// Update the topic title
+	_, err = tx.Exec("UPDATE categories SET title = $1 WHERE id = $2", payload.Title, topicID)
+	if err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update topic."})
+		return
+	}
+
+	// Clear existing subcategory associations
+	_, err = tx.Exec("DELETE FROM topic_subcategories WHERE topic_id = $1", topicID)
+	if err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear existing subcategories."})
+		return
+	}
+
+	// Insert new subcategory associations
+	stmt, err := tx.Prepare("INSERT INTO topic_subcategories (sub_category_id, topic_id) VALUES ($1, $2)")
+	if err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to prepare statement."})
+		return
+	}
+	defer stmt.Close()
+
+	for _, subCategoryID := range payload.SubCategoryIds {
+		_, err = stmt.Exec(subCategoryID, topicID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert subcategory association."})
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": payload,
+	})
+}
 
 func CreateCategories(c *gin.Context) {
 	var categoriesBody []category.CategoryWithCamelCaseJSON

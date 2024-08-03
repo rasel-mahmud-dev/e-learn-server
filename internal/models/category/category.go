@@ -17,8 +17,8 @@ type Category struct {
 	CreatedAt   *time.Time `json:"created_at,omitempty"`
 	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
-	Title       string     `json:"title"`
-	Slug        string     `json:"slug"`
+	Title       string     `json:"title,omitempty"`
+	Slug        string     `json:"slug,omitempty"`
 	Type        *string    `json:"type,omitempty"` // category / subcategory // topic
 	Image       *string    `json:"image,omitempty"`
 	Description *string    `json:"description,omitempty"`
@@ -29,6 +29,8 @@ type CategoryWithCamelCaseJSON struct {
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+	SubCategoryIds *[]string `json:"subCategories,omitempty"`
 }
 
 func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *CategoryWithCamelCaseJSON) error, where string) ([]CategoryWithCamelCaseJSON, error) {
