@@ -47,7 +47,7 @@ func SetupRouter() *gin.Engine {
 	r.POST("/sub-categories", handlers.CreateSubCategories)
 	r.GET("/sub-categories/one", handlers.GetSubCategory)
 	r.GET("/sub-categories", handlers.GetSubCategories)
-	//r.PATCH("/sub-categories/:id", handlers.UpdateSubCategory)
+	r.PATCH("/sub-categories/:slug", handlers.UpdateSubCategory)
 
 	r.POST("/categories", handlers.CreateCategories)
 	r.GET("/categories", handlers.GetCategories)

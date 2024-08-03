@@ -31,6 +31,7 @@ type CategoryWithCamelCaseJSON struct {
 	DeletedAt *time.Time `json:"deletedAt,omitempty"`
 
 	SubCategoryIds *[]string `json:"subCategories,omitempty"`
+	CategoryIds    *[]string `json:"categories,omitempty"`
 }
 
 func GetAllBySelect(c *gin.Context, columns []string, scanFunc func(*sql.Rows, *CategoryWithCamelCaseJSON) error, where string) ([]CategoryWithCamelCaseJSON, error) {
