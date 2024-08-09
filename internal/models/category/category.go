@@ -111,3 +111,20 @@ func GetOne(c *gin.Context, columns []string, scanFunc func(*sql.Row, *CategoryW
 
 	return user, nil
 }
+
+func TopicEnrollmentCount(c *gin.Context, topicSlug string) (int64, error) {
+
+	query := `SELECT COUNT(e.user_id) AS topic_enrollment_count
+	FROM categories c
+	JOIN courses_topics ct ON c.id = ct.topic_id
+	JOIN enrollments e ON ct.course_id = e.course_id
+	WHERE c.type = 'topic' AND c.slug = $1`
+
+	var topicEnrollmentCount int64
+	err := database.DB.QueryRowContext(c, query, topicSlug).Scan(&topicEnrollmentCount)
+	if err != nil {
+		return 0, err
+	}
+
+	return topicEnrollmentCount, nil
+}

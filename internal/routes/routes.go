@@ -8,6 +8,7 @@ import (
 	courseRoute "e-learn/internal/routes/course"
 	instructorRoute "e-learn/internal/routes/instructor"
 	roleRoute "e-learn/internal/routes/role"
+	"e-learn/internal/routes/topic"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -56,6 +57,7 @@ func SetupRouter() *gin.Engine {
 	r.GET("/topics/one", handlers.GetTopic)
 	r.GET("/topics", handlers.GetTopics)
 	r.PATCH("/topics/:slug", handlers.UpdateTopic)
+	r.GET("/topics/info/:slug", handlers.GetDetailTopicInfo)
 
 	//r.POST("/course", handlers.CreateCourse)
 	//r.POST("/course/batch", handlers.CreateCourseBatch)
@@ -68,6 +70,7 @@ func SetupRouter() *gin.Engine {
 	authRoute.AuthRoute(r)
 	courseRoute.CourseRoute(r)
 	roleRoute.RoleRoutes(r)
+	topic.TopicRoutes(r)
 
 	return r
 }

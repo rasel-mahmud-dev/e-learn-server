@@ -401,6 +401,20 @@ ALTER TABLE customer_keyword_metadata
     ADD COLUMN is_cleared BOOLEAN DEFAULT FALSE;
 
 
+drop table if exists customer_topic_preference;
+CREATE TABLE IF NOT EXISTS customer_topic_preference
+(
+    id serial PRIMARY KEY,
+    user_id          VARCHAR DEFAULT NULL,
+    ip_address       VARCHAR,
+    device_info      VARCHAR,
+    topic_id         INT REFERENCES categories (id),
+    rank             DOUBLE PRECISION DEFAULT 0.0,
+    preference_score DOUBLE PRECISION DEFAULT 0.0,
+    created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- Topic_Subcategories Join Table
 CREATE TABLE public.topic_subcategories
 (
@@ -420,3 +434,63 @@ CREATE TABLE public.subcategory_categories
     FOREIGN KEY (category_id) REFERENCES public.categories (id) ON DELETE CASCADE,
     FOREIGN KEY (sub_category_id) REFERENCES public.categories (id) ON DELETE CASCADE
 );
+
+drop table if exists enrollments;
+CREATE TABLE enrollments
+(
+    id                SERIAL PRIMARY KEY,
+    course_id         uuid NOT NULL references courses (course_id),
+    user_id           uuid NOT NULL references users (user_id),
+    enrollment_date   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    progress          DECIMAL(5, 2) DEFAULT 0.00,
+    completion_status VARCHAR(20)   DEFAULT 'not_started' CHECK (completion_status IN ('not_started', 'in_progress', 'completed'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uni_enrollments_course_id_user_id ON public.enrollments USING btree (user_id, course_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_user_id ON public.enrollments USING btree (user_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_course_id ON public.enrollments USING btree (course_id);
+
+
+
+-- Get topics total users enrolled // 1,000,000 learners
+
+
+SELECT COUNT(e.user_id) AS topic_enrollment_count
+FROM categories c
+         JOIN courses_topics ct ON c.id = ct.topic_id
+         JOIN enrollments e ON ct.course_id = e.course_id
+WHERE c.type = 'topic' AND c.slug = 'javascript';
+
+
+select * from users;
+
+
+
+-- List of courses
+WITH courses AS (
+    SELECT 'e4106379-935a-4e9c-8647-2c8deeef27e4'::uuid AS course_id UNION ALL
+    SELECT '62e998de-efe6-4612-8321-5a662d0377db'::uuid UNION ALL
+    SELECT 'cdea1d96-a476-4ec5-9aa9-554b00f5dcf5'::uuid UNION ALL
+    SELECT '85fcaf7e-c81a-4681-8c31-d0e558009d3a'::uuid
+),
+
+-- List of users
+     users AS (
+         SELECT '066f3ecd-3b7a-4bde-ba8a-cd44520c520d'::uuid AS user_id UNION ALL
+         SELECT 'fbbfc14b-0984-4d47-ab95-5d49b9bf24b0'::uuid UNION ALL
+         SELECT '155f3c23-f22e-4998-b5eb-61e1dc318ef3'::uuid UNION ALL
+         SELECT '91108726-4644-49e3-95fa-998030589e48'::uuid UNION ALL
+         SELECT '4b1bfbac-ba98-4b4b-9153-0cd110af87a7'::uuid UNION ALL
+         SELECT '5b8846a2-959d-47b8-bdbe-3b8d60ce509b'::uuid UNION ALL
+         SELECT '442e43c7-7b62-40a5-ab99-ef6d9383a028'::uuid UNION ALL
+         SELECT '1b0d0d87-856e-4433-a5c0-0fe7aca5babc'::uuid UNION ALL
+         SELECT '68d822c9-4448-4701-acc1-1c1a3441173c'::uuid UNION ALL
+         SELECT '0937d9d1-feaf-4d81-a2bf-7f292dab2d82'::uuid UNION ALL
+         SELECT 'b80cf2d3-cae8-4719-9a59-94b24e1261fd'::uuid
+     )
+
+-- Insert all combinations into enrollments
+INSERT INTO enrollments (course_id, user_id)
+SELECT c.course_id, u.user_id
+FROM courses c
+         CROSS JOIN users u;

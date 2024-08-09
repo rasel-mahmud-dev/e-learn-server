@@ -36,16 +36,39 @@ func GetCategories(c *gin.Context) {
 
 func GetTopics(c *gin.Context) {
 
-	categories, err := category.GetAllBySelect(c, []string{"id", "title", "slug", "image", "description", "created_at"}, func(rows *sql.Rows, category *category.CategoryWithCamelCaseJSON) error {
-		return rows.Scan(
-			&category.ID,
-			&category.Title,
-			&category.Slug,
-			&category.Image,
-			&category.Description,
-			&category.CreatedAt,
-		)
-	}, "where type = 'topic' ")
+	categories, err := category.GetAllBySelect(c, []string{
+		"id", "title", "slug", "image",
+		"description",
+		"created_at",
+		"(select JSON_AGG(sub_category_id::text) from topic_subcategories as ids where topic_id = categories.id)",
+	},
+		func(rows *sql.Rows, category *category.CategoryWithCamelCaseJSON) error {
+			var CategoryIds []byte
+			err := rows.Scan(
+				&category.ID,
+				&category.Title,
+				&category.Slug,
+				&category.Image,
+				&category.Description,
+				&category.CreatedAt,
+				&CategoryIds,
+			)
+
+			if err != nil {
+				return err
+			}
+
+			if len(CategoryIds) == 0 {
+				category.SubCategoryIds = nil
+			} else {
+				if err := json.Unmarshal(CategoryIds, &category.SubCategoryIds); err != nil {
+					return err
+				}
+			}
+
+			return nil
+
+		}, "where type = 'topic' ")
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -61,16 +84,40 @@ func GetSubCategories(c *gin.Context) {
 
 	items, err := category.GetAllBySelect(
 		c,
-		[]string{"id", "title", "slug", "image", "description", "created_at"},
+		[]string{
+			"id",
+			"title",
+			"slug",
+			"image",
+			"description",
+			"created_at",
+			"(select JSON_AGG(category_id::text) from subcategory_categories as category_ids where sub_category_id = categories.id)",
+		},
 		func(rows *sql.Rows, category *category.CategoryWithCamelCaseJSON) error {
-			return rows.Scan(
+			var CategoryIds []byte
+			err := rows.Scan(
 				&category.ID,
 				&category.Title,
 				&category.Slug,
 				&category.Image,
 				&category.Description,
 				&category.CreatedAt,
+				&CategoryIds,
 			)
+			if err != nil {
+				return err
+			}
+
+			if len(CategoryIds) == 0 {
+				category.CategoryIds = nil
+			} else {
+				if err := json.Unmarshal(CategoryIds, &category.CategoryIds); err != nil {
+					return err
+				}
+			}
+
+			return nil
+
 		}, "where type = 'subcategory' ")
 
 	if err != nil {
@@ -200,6 +247,61 @@ func GetTopic(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": bySlug,
+	})
+}
+
+func GetDetailTopicInfo(c *gin.Context) {
+
+	slug := c.Param("slug")
+	if slug == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
+		return
+	}
+
+	columns := []string{
+		"id",
+		"title",
+		"slug",
+		"(select JSON_AGG(sub_category_id::text) from topic_subcategories as sub_category_ids where topic_id = categories.id)",
+	}
+
+	var err error
+	var bySlug *category.CategoryWithCamelCaseJSON
+
+	bySlug, err = category.GetOne(c, columns, func(row *sql.Row, data *category.CategoryWithCamelCaseJSON) error {
+		var subCategoryIds []byte
+
+		err := row.Scan(&data.ID, &data.Title, &data.Slug, &subCategoryIds)
+		if err != nil {
+			return err
+		}
+
+		if len(subCategoryIds) == 0 {
+			data.SubCategoryIds = nil
+		} else {
+			if err := json.Unmarshal(subCategoryIds, &data.SubCategoryIds); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	}, "where slug = $1 AND type = $2", []any{slug, "topic"})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
+		return
+	}
+
+	enrollmentCount, err := category.TopicEnrollmentCount(c, slug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid parameter."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"detail":          bySlug,
+			"enrollmentCount": enrollmentCount,
+		},
 	})
 }
 
