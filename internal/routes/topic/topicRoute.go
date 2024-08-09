@@ -8,5 +8,6 @@ import (
 func TopicRoutes(r *gin.Engine) {
 
 	r.GET("/topics/pref/:slug", topicHandler.StoreTopicPreference)
+	r.GET("/topics/popular", topicHandler.PopularTopic)
 
 }

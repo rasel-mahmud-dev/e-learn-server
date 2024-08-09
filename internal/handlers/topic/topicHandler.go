@@ -94,3 +94,39 @@ func StoreTopicPreference(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"status": "success"})
 }
+
+func PopularTopic(c *gin.Context) {
+
+	query := `
+		SELECT t.slug,  t.title
+		FROM customer_topic_preference ctp
+		JOIN categories t ON ctp.topic_id = t.id AND t.type = 'topic'
+		GROUP BY t.title, t.slug
+		ORDER BY SUM(ctp.preference_score) DESC
+		LIMIT 100
+	`
+
+	rows, err := database.DB.Query(query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var topics []category.CategoryWithCamelCaseJSON
+	for rows.Next() {
+		var topic category.CategoryWithCamelCaseJSON
+		if err := rows.Scan(&topic.Slug, &topic.Title); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		topics = append(topics, topic)
+	}
+
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": topics})
+}
