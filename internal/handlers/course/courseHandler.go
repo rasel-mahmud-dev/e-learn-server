@@ -65,6 +65,57 @@ func GetInstructorCourses(c *gin.Context) {
 	})
 }
 
+func GetCourses(c *gin.Context) {
+
+	// check auth
+	authUser := utils.GetAuthUser(c)
+	if authUser == nil {
+		response.ErrorResponse(c, errors.New("Unauthorization"), nil)
+		return
+	}
+
+	columns := []string{
+		"courses.id as id",
+		"ac.course_id as course_id",
+		"title",
+		"slug",
+		"thumbnail",
+		"price",
+		"created_at",
+		"(select jsonb_agg(DISTINCT cs.category_id) from courses_categories cs where courses.course_id = cs.course_id) as categories",
+		"(select jsonb_agg(DISTINCT sc.category_id) from courses_sub_categories sc where courses.course_id = sc.course_id) as sub_categories",
+		"(select jsonb_agg(DISTINCT ct.topic_id)  from courses_topics ct where courses.course_id = ct.course_id)         as topics",
+		"(select jsonb_agg(DISTINCT ac.author_id) from authors_courses ac where ac.course_id = courses.course_id)           as authors",
+	}
+
+	authJoin := `join authors_courses ac on courses.course_id = ac.course_id`
+
+	courses, err := course.GetAllBySelect(c, columns, func(rows *sql.Rows, course *course.Course) error {
+		return rows.Scan(
+			&course.ID,
+			&course.CourseID,
+			&course.Title,
+			&course.Slug,
+			&course.Thumbnail,
+			&course.Price,
+			&course.CreatedAt,
+			&course.CategoryListJson,
+			&course.SubCategoryListJson,
+			&course.TopicListJson,
+			&course.AuthorListJson,
+		)
+	}, authJoin, nil)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": courses,
+	})
+}
+
 func GetInstructorCourseDetail(c *gin.Context) {
 
 	// check auth

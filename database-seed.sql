@@ -98,11 +98,16 @@ CREATE TABLE IF NOT EXISTS public.courses
     deleted_at   timestamp with time zone,
     thumbnail    text,
     title        text               not null unique,
+    duration     varchar default 'short',  -- New column
+    num_lectures integer default 0,           -- New column
     slug         text               not null,
     description  varchar,
     publish_date timestamp with time zone,
     price        double precision   not null
 );
+
+ALTER table courses add column duration varchar default 'short';
+ALTER table courses add column num_lectures  integer default 0;
 
 -- Create indexes for courses table
 CREATE UNIQUE INDEX IF NOT EXISTS uni_courses_slug ON public.courses USING btree (slug);
@@ -494,3 +499,38 @@ INSERT INTO enrollments (course_id, user_id)
 SELECT c.course_id, u.user_id
 FROM courses c
          CROSS JOIN users u;
+
+
+
+
+CREATE TABLE public.levels (
+   id SERIAL PRIMARY KEY,
+   name VARCHAR(255) UNIQUE NOT NULL,
+   slug VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE INDEX idx_levels_slug ON public.levels (slug);
+
+INSERT INTO public.levels (name, slug)
+VALUES
+    ('Beginner', 'beginner'),
+    ('Intermediate', 'intermediate'),
+    ('Advanced', 'advanced'),
+    ('All Levels', 'all-levels')
+ON CONFLICT (name) DO NOTHING;
+
+
+CREATE TABLE public.durations (
+  id SERIAL PRIMARY KEY,
+  duration VARCHAR(50) UNIQUE NOT NULL
+);
+CREATE INDEX idx_duration ON public.durations (duration);
+
+INSERT INTO public.durations (duration)
+VALUES
+    ('extraShort'),
+    ('short'),
+    ('medium'),
+    ('long'),
+    ('extraLong')
+ON CONFLICT (duration) DO NOTHING;

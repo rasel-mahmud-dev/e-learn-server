@@ -103,7 +103,7 @@ func PopularTopic(c *gin.Context) {
 		JOIN categories t ON ctp.topic_id = t.id AND t.type = 'topic'
 		GROUP BY t.title, t.slug
 		ORDER BY SUM(ctp.preference_score) DESC
-		LIMIT 100
+		LIMIT 20
 	`
 
 	rows, err := database.DB.Query(query)
