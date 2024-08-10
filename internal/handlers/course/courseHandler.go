@@ -69,44 +69,46 @@ func GetInstructorCourses(c *gin.Context) {
 }
 
 func GetCourses(c *gin.Context) {
-
-	// Retrieve topics from query parameters
+	// Retrieve topics and durations from query parameters
 	topics := c.QueryArray("topic")
 	durations := c.QueryArray("duration")
 
-	// Construct placeholders for the query
-	placeholders := make([]string, len(topics))
-	for i := range topics {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-	}
-	placeholderString := strings.Join(placeholders, ", ")
+	// Build the base query
+	query := `SELECT c.* FROM public.courses c
+              JOIN public.courses_topics ct ON c.course_id = ct.course_id
+              JOIN public.categories cat ON ct.topic_id = cat.id AND cat.type = 'topic'
+              WHERE 1=1`
 
-	// Construct placeholders for the durations
-	durationPlaceholders := make([]string, len(durations))
-	for i := range durations {
-		durationPlaceholders[i] = fmt.Sprintf("$%d", len(topics)+i+1)
-	}
-	durationPlaceholderString := strings.Join(durationPlaceholders, ", ")
+	// Initialize params slice for dynamic queries
+	var params []interface{}
+	var queryParts []string
 
-	query := fmt.Sprintf(`
-    SELECT c.*
-    FROM public.courses c
-    JOIN public.courses_topics ct ON c.course_id = ct.course_id
-    JOIN public.categories cat ON ct.topic_id = cat.id AND cat.type = 'topic'
-    WHERE cat.slug IN (%s)  AND c.duration IN (%s)
-    `, placeholderString, durationPlaceholderString)
-
-	// Convert topics and durations to a slice of interface{}
-	params := make([]interface{}, len(topics)+len(durations))
-	for i, topic := range topics {
-		params[i] = topic
+	// Add topic filters if present
+	if len(topics) > 0 {
+		topicPlaceholders := make([]string, len(topics))
+		for i := range topics {
+			topicPlaceholders[i] = fmt.Sprintf("$%d", len(params)+1)
+			params = append(params, topics[i])
+		}
+		queryParts = append(queryParts, fmt.Sprintf("cat.slug IN (%s)", strings.Join(topicPlaceholders, ", ")))
 	}
-	for i, duration := range durations {
-		params[len(topics)+i] = duration
-	}
-	fmt.Println(params)
 
-	// Execute the query with topics as an array
+	// Add duration filters if present
+	if len(durations) > 0 {
+		durationPlaceholders := make([]string, len(durations))
+		for i := range durations {
+			durationPlaceholders[i] = fmt.Sprintf("$%d", len(params)+1)
+			params = append(params, durations[i])
+		}
+		queryParts = append(queryParts, fmt.Sprintf("c.duration IN (%s)", strings.Join(durationPlaceholders, ", ")))
+	}
+
+	// Combine the base query with dynamic parts
+	if len(queryParts) > 0 {
+		query += " AND " + strings.Join(queryParts, " AND ")
+	}
+
+	// Execute the query
 	rows, err := database.DB.QueryContext(c, query, params...)
 	if err != nil {
 		log.Printf("Error executing query: %v", err)
@@ -115,6 +117,7 @@ func GetCourses(c *gin.Context) {
 	}
 	defer rows.Close()
 
+	// Parse the results
 	var courses []course.Course
 	for rows.Next() {
 		var course course.Course
@@ -140,7 +143,7 @@ func GetCourses(c *gin.Context) {
 		}
 		courses = append(courses, course)
 	}
-	//
+
 	if err := rows.Err(); err != nil {
 		log.Printf("Error iterating over rows: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing courses"})

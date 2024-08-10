@@ -54,3 +54,11 @@ FROM public.courses c
          JOIN public.courses_topics ct ON c.course_id = ct.course_id
          JOIN public.categories cat ON ct.topic_id = cat.id AND cat.type = 'topic'
 WHERE cat.slug = 'javascript';
+
+
+
+SELECT c.*
+FROM public.courses c
+         JOIN public.courses_topics ct ON c.course_id = ct.course_id
+         JOIN public.categories cat ON ct.topic_id = cat.id AND cat.type = 'topic'
+WHERE cat.slug IN ($1)  AND c.duration IN ()
