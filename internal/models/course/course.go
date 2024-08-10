@@ -21,6 +21,8 @@ type Course struct {
 	Title       string ` json:"title"`
 	Slug        string ` json:"slug" `
 	Description string ` json:"description,omitempty" `
+	Duration    string ` json:"duration,omitempty" `
+	NumLectures string ` json:"numLectures,omitempty" `
 
 	PublishDate *time.Time `json:"publishDate,omitempty" `
 

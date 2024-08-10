@@ -9,8 +9,11 @@ import (
 	"e-learn/internal/utils"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -67,53 +70,85 @@ func GetInstructorCourses(c *gin.Context) {
 
 func GetCourses(c *gin.Context) {
 
-	// check auth
-	authUser := utils.GetAuthUser(c)
-	if authUser == nil {
-		response.ErrorResponse(c, errors.New("Unauthorization"), nil)
+	// Retrieve topics from query parameters
+	topics := c.QueryArray("topic")
+	durations := c.QueryArray("duration")
+
+	// Construct placeholders for the query
+	placeholders := make([]string, len(topics))
+	for i := range topics {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+	placeholderString := strings.Join(placeholders, ", ")
+
+	// Construct placeholders for the durations
+	durationPlaceholders := make([]string, len(durations))
+	for i := range durations {
+		durationPlaceholders[i] = fmt.Sprintf("$%d", len(topics)+i+1)
+	}
+	durationPlaceholderString := strings.Join(durationPlaceholders, ", ")
+
+	query := fmt.Sprintf(`
+    SELECT c.*
+    FROM public.courses c
+    JOIN public.courses_topics ct ON c.course_id = ct.course_id
+    JOIN public.categories cat ON ct.topic_id = cat.id AND cat.type = 'topic'
+    WHERE cat.slug IN (%s)  AND c.duration IN (%s)
+    `, placeholderString, durationPlaceholderString)
+
+	// Convert topics and durations to a slice of interface{}
+	params := make([]interface{}, len(topics)+len(durations))
+	for i, topic := range topics {
+		params[i] = topic
+	}
+	for i, duration := range durations {
+		params[len(topics)+i] = duration
+	}
+	fmt.Println(params)
+
+	// Execute the query with topics as an array
+	rows, err := database.DB.QueryContext(c, query, params...)
+	if err != nil {
+		log.Printf("Error executing query: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching courses"})
 		return
 	}
+	defer rows.Close()
 
-	columns := []string{
-		"courses.id as id",
-		"ac.course_id as course_id",
-		"title",
-		"slug",
-		"thumbnail",
-		"price",
-		"created_at",
-		"(select jsonb_agg(DISTINCT cs.category_id) from courses_categories cs where courses.course_id = cs.course_id) as categories",
-		"(select jsonb_agg(DISTINCT sc.category_id) from courses_sub_categories sc where courses.course_id = sc.course_id) as sub_categories",
-		"(select jsonb_agg(DISTINCT ct.topic_id)  from courses_topics ct where courses.course_id = ct.course_id)         as topics",
-		"(select jsonb_agg(DISTINCT ac.author_id) from authors_courses ac where ac.course_id = courses.course_id)           as authors",
-	}
-
-	authJoin := `join authors_courses ac on courses.course_id = ac.course_id`
-
-	courses, err := course.GetAllBySelect(c, columns, func(rows *sql.Rows, course *course.Course) error {
-		return rows.Scan(
+	var courses []course.Course
+	for rows.Next() {
+		var course course.Course
+		err := rows.Scan(
 			&course.ID,
 			&course.CourseID,
+			&course.CreatedAt,
+			&course.UpdatedAt,
+			&course.DeletedAt,
+			&course.Thumbnail,
 			&course.Title,
 			&course.Slug,
-			&course.Thumbnail,
+			&course.Description,
+			&course.PublishDate,
 			&course.Price,
-			&course.CreatedAt,
-			&course.CategoryListJson,
-			&course.SubCategoryListJson,
-			&course.TopicListJson,
-			&course.AuthorListJson,
+			&course.Duration,
+			&course.NumLectures,
 		)
-	}, authJoin, nil)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err != nil {
+			log.Printf("Error scanning row: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing courses"})
+			return
+		}
+		courses = append(courses, course)
+	}
+	//
+	if err := rows.Err(); err != nil {
+		log.Printf("Error iterating over rows: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing courses"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": courses,
-	})
+	// Respond with the courses data
+	c.JSON(http.StatusOK, gin.H{"data": courses})
 }
 
 func GetInstructorCourseDetail(c *gin.Context) {
